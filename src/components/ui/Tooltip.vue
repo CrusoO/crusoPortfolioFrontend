@@ -2,9 +2,9 @@
   <div class="tooltip-root">
     <div 
       class="tooltip-trigger"
-      @mouseenter="show"
+      @mouseenter="(event: MouseEvent) => show(event)"
       @mouseleave="hide"
-      @focus="show"
+      @focus="(event: FocusEvent) => show(event)"
       @blur="hide"
     >
       <slot />
