@@ -688,14 +688,16 @@ function saveCanvas() {
 async function saveCanvasToBackend(imageData: string) {
   saveStatus.value = 'saving'
   
+  // Define artwork data outside try block so it's accessible in catch
+  const artworkData = {
+    username: 'visitor',
+    title: `Artwork by visitor - ${new Date().toLocaleString()}`,
+    image_data: imageData,
+    contributors: contributors.value.map(c => ({ name: c.name, color: c.color })),
+    is_public: true
+  }
+  
   try {
-    const artworkData = {
-      username: 'visitor',
-      title: `Artwork by visitor - ${new Date().toLocaleString()}`,
-      image_data: imageData,
-      contributors: contributors.value.map(c => ({ name: c.name, color: c.color })),
-      is_public: true
-    }
     
     let response: Response
     
@@ -750,15 +752,58 @@ async function saveCanvasToBackend(imageData: string) {
     }
     
   } catch (error) {
-    console.log('❌ Failed to save artwork to backend:', error)
-    saveStatus.value = 'error'
+    console.log('❌ Backend not available, saving canvas locally:', error)
     
-    // Clear error status after 3 seconds
-    setTimeout(() => {
-      if (saveStatus.value === 'error') {
-        saveStatus.value = 'idle'
+    // Fallback: Save to localStorage
+    try {
+      const localId = canvasId.value || `canvas_${Date.now()}`
+      const localArtwork = {
+        ...artworkData,
+        id: localId,
+        saved_locally: true,
+        saved_at: new Date().toISOString()
       }
-    }, 3000)
+      
+      // Save to localStorage
+      const existingArtworks = JSON.parse(localStorage.getItem('portfolioCanvasArt') || '[]')
+      const existingIndex = existingArtworks.findIndex((art: any) => art.id === localId)
+      
+      if (existingIndex >= 0) {
+        existingArtworks[existingIndex] = localArtwork
+      } else {
+        existingArtworks.push(localArtwork)
+      }
+      
+      localStorage.setItem('portfolioCanvasArt', JSON.stringify(existingArtworks))
+      
+      if (!canvasId.value) {
+        canvasId.value = localId
+        isNewCanvas.value = false
+        localStorage.setItem('portfolioCanvasId', localId)
+      }
+      
+      saveStatus.value = 'saved'
+      lastSaveTime.value = new Date()
+      console.log('✅ Canvas saved locally successfully!')
+      
+      // Clear saved status after 3 seconds
+      setTimeout(() => {
+        if (saveStatus.value === 'saved') {
+          saveStatus.value = 'idle'
+        }
+      }, 3000)
+      
+    } catch (localError) {
+      console.error('Failed to save locally:', localError)
+      saveStatus.value = 'error'
+      
+      // Clear error status after 3 seconds
+      setTimeout(() => {
+        if (saveStatus.value === 'error') {
+          saveStatus.value = 'idle'
+        }
+      }, 3000)
+    }
   }
 }
 

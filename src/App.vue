@@ -12,6 +12,7 @@ import SkillsSection from '@/components/SkillsSection.vue'
 import ContactSection from '@/components/ContactSection.vue'
 import TheFooter from '@/components/TheFooter.vue'
 import ChatBot from '@/components/ChatBot.vue'
+import ApiTester from '@/components/ApiTester.vue'
 </script>
 
 <template>
@@ -42,6 +43,11 @@ import ChatBot from '@/components/ChatBot.vue'
       
       <!-- Contact Information Section -->
       <ContactSection />
+      
+      <!-- API Testing Section - For Development/Debugging -->
+      <section id="api-test" style="background: #f8fafc; border-top: 1px solid #e2e8f0;">
+        <ApiTester />
+      </section>
     </main>
 
     <!-- Site Footer -->
@@ -95,7 +101,8 @@ main {
 #paint-canvas,
 #projects,
 #skills,
-#contact {
+#contact,
+#api-test {
   scroll-margin-top: 5rem;
 }
 

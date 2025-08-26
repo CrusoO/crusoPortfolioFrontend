@@ -64,7 +64,7 @@ const showPaintCanvas = ref(true)
 
 </script>
 
-<style scoped>
+for <style scoped>
 /* Hero Section Styles */
 .hero {
   position: relative;

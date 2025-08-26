@@ -628,7 +628,7 @@ async function startWelcomeSequence() {
       } catch (error) {
         console.log('TTS not available, continuing with text only')
         // Fallback to typing animation
-        typeMessage(fullWelcomeMessage.value, () => {
+      typeMessage(fullWelcomeMessage.value, () => {
           // After message completes, tell a joke
           setTimeout(async () => {
             const jokeText = "Here's a joke: Why do programmers prefer dark mode? Because light attracts bugs! 😂"
@@ -636,11 +636,11 @@ async function startWelcomeSequence() {
             
             typeMessage(jokeText, () => {
               // After joke, move to corner and set up scroll detection
-              setTimeout(() => {
-                showSpeechBubble.value = false
-                showingWelcome.value = false
+        setTimeout(() => {
+          showSpeechBubble.value = false
+          showingWelcome.value = false
                 position.value = { x: 20, y: 20 } // Move to top-left corner
-                isInitialLoad.value = false
+          isInitialLoad.value = false
                 startScrollDetection()
                 startBoredTimer()
               }, 3000)
@@ -1820,7 +1820,7 @@ onUnmounted(() => {
     right: 2rem;
     z-index: 1000;
   }
-
+  
   .bot-toggle {
     width: 64px;
     height: 64px;

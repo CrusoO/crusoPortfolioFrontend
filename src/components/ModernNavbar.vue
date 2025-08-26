@@ -54,6 +54,12 @@ const navItems: NavItem[] = [
     label: 'Contact',
     sectionId: 'contact',
     scrollOffset: -5  // Custom scroll offset for Contact section
+  },
+  {
+    id: 'api-test',
+    label: 'API Test',
+    sectionId: 'api-test',
+    scrollOffset: -20  // Custom scroll offset for API Test section
   }
 ]
 

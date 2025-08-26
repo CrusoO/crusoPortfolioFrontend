@@ -375,7 +375,7 @@ const speechVolume = ref(0.9)
 const speechPitch = ref(0.95) // Slightly lower pitch for warmth
 const currentSpeech = ref<SpeechSynthesisUtterance | null>(null)
 const currentAudio = ref<HTMLAudioElement | null>(null)
-const useAIVoice = ref(true) // Toggle between AI voice and browser voice
+const useAIVoice = ref(false) // Toggle between AI voice and browser voice - Defaulting to browser to avoid CORS issues
 const isLoadingAudio = ref(false)
 
 // Load notes from backend
@@ -872,7 +872,8 @@ async function startAIVoice(text: string, noteId?: string) {
       useSpeakerBoost: true
     })
   } catch (error) {
-    console.warn('AI voice failed, falling back to browser TTS:', error)
+    console.warn('AI voice failed due to CORS or API issues, falling back to browser TTS:', error)
+    // Automatically disable AI voice to prevent future CORS errors
     useAIVoice.value = false
     startSpeech(text)
   } finally {
@@ -1002,7 +1003,14 @@ async function playSelectedArticle() {
   
   // Try AI voice first with smart caching, fallback to browser voice
   if (useAIVoice.value) {
-    await startAIVoice(textToSpeak, noteId)
+    try {
+      await startAIVoice(textToSpeak, noteId)
+    } catch (error) {
+      console.warn('AI voice failed due to CORS or API issues, falling back to browser voice:', error)
+      // Automatically switch to browser voice and try again
+      useAIVoice.value = false
+      startSpeech(textToSpeak)
+    }
   } else {
     startSpeech(textToSpeak)
   }

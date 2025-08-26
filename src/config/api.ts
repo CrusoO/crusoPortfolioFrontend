@@ -1,5 +1,6 @@
-// API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://your-backend.onrender.com/api'
+// API Configuration - Defaults to local mode (no backend required)
+// Set VITE_API_BASE_URL environment variable only if you have deployed backend
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
 
 export const API_ENDPOINTS = {
   CHAT_MESSAGE: `${API_BASE_URL}/chat/message`,
