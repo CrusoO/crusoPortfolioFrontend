@@ -93,7 +93,7 @@ const tooltipStyle = computed(() => {
   return style
 })
 
-function show(event: MouseEvent | FocusEvent) {
+function show(event: MouseEvent | FocusEvent): void {
   if (timeoutId) clearTimeout(timeoutId)
   
   const target = event.currentTarget as HTMLElement
@@ -105,11 +105,11 @@ function show(event: MouseEvent | FocusEvent) {
   }, props.delay)
 }
 
-function handleMouseEnter(event: MouseEvent) {
+function handleMouseEnter(event: MouseEvent): void {
   show(event)
 }
 
-function handleFocus(event: FocusEvent) {
+function handleFocus(event: FocusEvent): void {
   show(event)
 }
 
