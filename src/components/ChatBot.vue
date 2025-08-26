@@ -7,36 +7,74 @@
     }"
     :style="getPositionStyle()"
     @mousedown="startDragging"
+    role="complementary"
+    aria-label="AI Assistant Chat Interface"
   >
-    <!-- Chat Messages -->
-    <div v-if="isOpen" class="chat-messages" @mousedown.stop>
-      <div class="chat-header">
-                  <div class="bot-info">
-            <div class="bot-avatar">🤖</div>
-            <div>
-              <div class="bot-name">Cruso</div>
-              <div class="bot-status">AI Assistant</div>
-            </div>
+    <!-- Chat Messages Dialog -->
+    <div 
+      v-if="isOpen" 
+      class="chat-messages" 
+      @mousedown.stop
+      role="dialog"
+      aria-labelledby="chat-header-title"
+      aria-modal="true"
+    >
+      <header class="chat-header">
+        <div class="bot-info">
+          <div class="bot-avatar" role="img" aria-label="Robot assistant">🤖</div>
+          <div>
+            <h3 id="chat-header-title" class="bot-name">Cruso</h3>
+            <p class="bot-status">Your AI Guide</p>
           </div>
-        <button @click="closeChat" class="close-btn">✕</button>
-      </div>
+        </div>
+        <button 
+          @click="closeChat" 
+          class="close-btn"
+          aria-label="Close chat"
+          type="button"
+        >
+          ✕
+        </button>
+      </header>
       
-      <div class="messages-container" ref="messagesContainer">
+      <div 
+        class="messages-container" 
+        ref="messagesContainer"
+        role="log"
+        aria-live="polite"
+        aria-label="Chat conversation"
+      >
         <div 
           v-for="message in messages" 
           :key="message.id"
           :class="['message', message.type]"
+          role="article"
+          :aria-label="`${message.type === 'bot' ? 'Assistant' : 'You'} message at ${message.time}`"
         >
-          <div class="message-avatar" v-if="message.type === 'bot'">🤖</div>
+          <div 
+            class="message-avatar" 
+            v-if="message.type === 'bot'"
+            role="img" 
+            aria-label="Assistant avatar"
+          >
+            🤖
+          </div>
           <div class="message-content">
             <div class="message-text">{{ message.text }}</div>
-            <div class="message-time">{{ message.time }}</div>
+            <time class="message-time" :datetime="message.timestamp">{{ message.time }}</time>
           </div>
-          <div class="message-avatar" v-if="message.type === 'user'">👨‍💻</div>
+          <div 
+            class="message-avatar" 
+            v-if="message.type === 'user'"
+            role="img"
+            aria-label="User avatar"
+          >
+            👨‍💻
+          </div>
         </div>
         
         <div v-if="isTyping" class="message bot">
-          <div class="message-avatar">🤖</div>
+          <div class="message-avatar"></div>
           <div class="message-content">
             <div class="typing-indicator">
               <span></span>
@@ -47,15 +85,30 @@
         </div>
       </div>
       
-      <div class="chat-input">
+      <form class="chat-input" @submit.prevent="sendMessage">
+        <label for="message-input" class="sr-only">Type your message</label>
         <input 
+          id="message-input"
           v-model="currentMessage"
           @keypress.enter="sendMessage"
-          placeholder="Ask Cruso anything about my work..."
+          placeholder="Ask anything about my work..."
           class="message-input"
+          :disabled="isTyping"
+          aria-describedby="input-hint"
+          autocomplete="off"
+          maxlength="500"
         />
-        <button @click="sendMessage" class="send-btn">📤</button>
-      </div>
+        <span id="input-hint" class="sr-only">Press Enter to send message</span>
+        <button 
+          type="submit"
+          @click="sendMessage" 
+          class="send-btn"
+          :disabled="!currentMessage.trim() || isTyping"
+          aria-label="Send message"
+        >
+          📤
+        </button>
+      </form>
     </div>
 
     <!-- Speech Bubble -->
@@ -128,7 +181,7 @@ const isSpeechTyping = ref(false)
 
 // Predefined responses about the portfolio - always greet as "visitor"
 const responses = [
-  "Hi visitor! 👋 This is Robinson! I'm excited to share my portfolio with you. How can I help you today? 🤖",
+  "Hi visitor! 👋 This is Cruso! I'm excited to share my portfolio with you. How can I help you today? 🤖",
   "I'm a passionate developer specializing in AI-powered applications and cutting-edge agricultural technology! 🚀",
   "My CodeSensei project is an AI-powered code analysis tool that transforms applications into interactive learning platforms! 💻",
   "Check out my AGRO Frontend - it's a modern agricultural management system with advanced analytics! 🌱",
@@ -590,38 +643,53 @@ onMounted(() => {
   position: absolute;
   top: 10px;
   right: 70px;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  padding: 0.75rem 1rem;
-  width: 320px;
-  max-height: 60px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 0.875rem 1.25rem;
+  width: 340px;
+  max-height: 70px;
   font-size: 0.9rem;
   font-weight: 500;
   line-height: 1.3;
-  color: hsl(var(--foreground));
+  color: #ffffff;
   box-shadow: 
-    0 4px 12px hsl(var(--foreground)/8),
-    0 2px 4px hsl(var(--foreground)/5);
-  animation: slideLeft 0.4s ease-out;
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   z-index: 10;
   pointer-events: none;
-  overflow: hidden;
+  backdrop-filter: blur(20px) saturate(1.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.speech-bubble:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .speech-bubble--welcome {
   right: 30px;
-  top: 60px;
-  width: 280px;
-  max-height: 70px;
+  top: 50px;
+  width: 320px;
+  max-height: 80px;
   font-weight: 600;
-  font-size: 0.85rem;
-  padding: 0.875rem 1rem;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
-  color: white;
-  border-radius: 18px;
-  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4), 0 4px 12px rgba(139, 92, 246, 0.3);
-  animation: slideFromRightWelcome 0.8s ease-out;
+  font-size: 0.9rem;
+  padding: 1rem 1.25rem;
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 22px;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  animation: popIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  backdrop-filter: blur(25px) saturate(1.3);
   position: fixed;
   z-index: 10000;
 }
@@ -642,19 +710,19 @@ onMounted(() => {
 .speech-bubble-arrow {
   position: absolute;
   top: 50%;
-  left: -8px;
+  right: -8px;
   transform: translateY(-50%);
   width: 0;
   height: 0;
   border-top: 8px solid transparent;
   border-bottom: 8px solid transparent;
-  border-right: 8px solid hsl(var(--card));
+  border-left: 8px solid rgba(0, 0, 0, 0.85);
 }
 
 .speech-bubble--welcome .speech-bubble-arrow {
-  left: -8px;
-  border-left: none;
-  border-right: 8px solid #8b5cf6;
+  right: -8px;
+  border-right: none;
+  border-left: 8px solid rgba(0, 0, 0, 0.85);
   border-top: 8px solid transparent;
   border-bottom: 8px solid transparent;
 }
@@ -662,21 +730,17 @@ onMounted(() => {
 .speech-bubble-arrow::before {
   content: '';
   position: absolute;
-  right: 1px;
+  left: 1px;
   top: -9px;
   width: 0;
   height: 0;
   border-top: 9px solid transparent;
   border-bottom: 9px solid transparent;
-  border-right: 9px solid hsl(var(--border));
-}
-
-.speech-bubble--welcome .speech-bubble-arrow {
-  border-right-color: hsl(var(--card));
+  border-left: 9px solid rgba(255, 255, 255, 0.15);
 }
 
 .speech-bubble--welcome .speech-bubble-arrow::before {
-  border-right-color: hsl(var(--primary)/20);
+  border-left-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Chat Messages */
@@ -686,12 +750,17 @@ onMounted(() => {
   right: 0;
   width: 320px;
   height: 400px;
-  background: hsl(var(--card));
-  border: 1px solid hsl(var(--border));
-  border-radius: 16px;
-  box-shadow: 0 20px 40px hsl(var(--foreground)/15);
+  background: #1a1a1a;
+  border: 1px solid #333333;
+  border-radius: 20px;
+  box-shadow: 
+    0 25px 50px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   overflow: hidden;
-  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: chatPopIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  backdrop-filter: blur(20px) saturate(1.1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .chat-header {
@@ -1020,6 +1089,63 @@ onMounted(() => {
   51%, 100% { opacity: 0; }
 }
 
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) translateX(20px);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05) translateX(-5px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(0.95) translateX(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) translateX(30px);
+  }
+  30% {
+    opacity: 0.3;
+    transform: scale(0.8) translateX(10px);
+  }
+  60% {
+    opacity: 0.8;
+    transform: scale(1.1) translateX(-5px);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(0.95) translateX(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+@keyframes chatPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(-20px);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05) translateY(-5px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .chat-messages {
@@ -1045,5 +1171,75 @@ onMounted(() => {
 .dark .chat-messages {
   background: hsl(var(--card));
   border-color: hsl(var(--border));
+}
+
+/* Screen reader only content for accessibility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Performance optimizations */
+.chatbot-container {
+  will-change: transform;
+  contain: layout style;
+}
+
+.chat-messages {
+  will-change: auto;
+  contain: layout;
+}
+
+.message {
+  contain: layout;
+}
+
+/* Improved focus styles for accessibility */
+.message-input:focus,
+.send-btn:focus,
+.close-btn:focus,
+.bot-toggle:focus {
+  outline: 2px solid #007acc;
+  outline-offset: 2px;
+}
+
+/* Disabled states */
+.message-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .chat-messages {
+    border-width: 2px;
+  }
+  
+  .message-text {
+    border: 1px solid;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .chatbot-container *,
+  .chat-messages *,
+  .speech-bubble * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 </style>

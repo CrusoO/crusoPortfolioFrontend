@@ -200,25 +200,45 @@
                 {{ formData.contactType === 'work' ? 'Project Details *' : 'Leave a Review' }}
               </Label>
               
-              <!-- Review Input with Star Vote -->
+              <!-- Review Input with Star Rating -->
               <div v-if="formData.contactType === 'review'" class="review-input-container">
-                <Textarea 
-                  id="message"
-                  v-model="formData.message"
-                  @input="() => clearFieldError('message')"
-                  placeholder="Share your thoughts about my work, projects, or any suggestions for improvement..."
-                  required
-                  :class="validationErrors.message ? 'review-textarea border-red-500' : 'review-textarea'"
-                  rows="4"
-                />
-                <Button 
-                  type="submit"
-                  :disabled="!formData.message.trim() || isSubmitting"
-                  class="star-vote-button"
-                  variant="ghost"
-                >
-                  <Star class="star-icon" :class="{ 'star-filled': formData.message.trim() }" />
-                </Button>
+                <div class="review-form-section">
+                  <!-- Star Rating -->
+                  <div class="rating-section">
+                    <Label for="rating" class="rating-label">Rate your experience *</Label>
+                    <StarRating 
+                      v-model="formData.rating"
+                      :show-label="true"
+                      class="star-rating-component"
+                    />
+                    <div v-if="validationErrors.rating" class="validation-error text-red-500 text-sm mt-1">
+                      {{ validationErrors.rating }}
+                    </div>
+                  </div>
+                  
+                  <!-- Review Message -->
+                  <div class="message-section">
+                    <Textarea 
+                      id="message"
+                      v-model="formData.message"
+                      @input="() => clearFieldError('message')"
+                      placeholder="Share your thoughts about my work, projects, or any suggestions for improvement..."
+                      required
+                      :class="validationErrors.message ? 'review-textarea border-red-500' : 'review-textarea'"
+                      rows="4"
+                    />
+                  </div>
+                  
+                  <!-- Submit Button -->
+                  <Button 
+                    type="submit"
+                    :disabled="!formData.message.trim() || formData.rating === 0 || isSubmitting"
+                    class="review-submit-button"
+                  >
+                    <Star class="h-4 w-4 mr-2" />
+                    Submit Review
+                  </Button>
+                </div>
               </div>
               
               <!-- Work Project Textarea -->
@@ -313,6 +333,7 @@ import Label from '@/components/ui/Label.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import HoverCard from '@/components/ui/HoverCard.vue'
 import Tooltip from '@/components/ui/Tooltip.vue'
+import StarRating from '@/components/ui/StarRating.vue'
 
 // import emailjs from '@emailjs/browser' // Uncomment when using EmailJS approach
 
@@ -322,7 +343,8 @@ const formData = ref({
   lastName: '',
   email: '',
   timeline: '',
-  message: ''
+  message: '',
+  rating: 0 // Star rating for reviews
 })
 
 // Removed debug logging for production
@@ -366,6 +388,13 @@ function validateForm() {
     errors.message = formData.value.contactType === 'work' ? 'Project details are required' : 'Please write your review'
   } else if (formData.value.message.length > 500) {
     errors.message = 'Message must be under 500 characters'
+  }
+  
+  // Rating validation for reviews
+  if (formData.value.contactType === 'review') {
+    if (!formData.value.rating || formData.value.rating === 0) {
+      errors.rating = 'Please select a star rating'
+    }
   }
   
   validationErrors.value = errors
@@ -415,7 +444,8 @@ function resetForm() {
     lastName: '',
     email: '',
     timeline: '',
-    message: ''
+    message: '',
+    rating: 0
   }
   
   // Clear any status messages
@@ -466,7 +496,7 @@ async function handleSubmit() {
         const reviewData = {
           username: 'Anonymous', // Could be enhanced to capture username
           message: formData.value.message,
-          rating: 5 // Default rating - could add rating input to form
+          rating: formData.value.rating // User's star rating
         }
         
         const response = await fetch(API_ENDPOINTS.REVIEWS, {
@@ -483,6 +513,7 @@ async function handleSubmit() {
           const review = {
             id: Date.now(),
             message: formData.value.message,
+            rating: formData.value.rating,
             date: new Date().toISOString(),
             timestamp: new Date().toLocaleString()
           }
@@ -502,6 +533,7 @@ async function handleSubmit() {
         const review = {
           id: Date.now(),
           message: formData.value.message,
+          rating: formData.value.rating,
           date: new Date().toISOString(),
           timestamp: new Date().toLocaleString()
         }
@@ -652,6 +684,41 @@ function updateReviewStats() {
   display: flex;
   gap: 0.5rem;
   align-items: flex-start;
+}
+
+.review-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.rating-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rating-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.star-rating-component {
+  align-self: flex-start;
+}
+
+.message-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.review-submit-button {
+  align-self: flex-start;
+  padding: 0.75rem 1.5rem;
+  font-weight: 500;
 }
 
 

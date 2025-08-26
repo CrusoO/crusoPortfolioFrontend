@@ -7,7 +7,10 @@ export const API_ENDPOINTS = {
   CANVAS_GALLERY: `${API_BASE_URL}/canvas/gallery`,
   REVIEWS: `${API_BASE_URL}/reviews`,
   CONTACT_SUBMIT: `${API_BASE_URL}/contact/submit`,
-  NOTES: `${API_BASE_URL}/notes`
+  NOTES: `${API_BASE_URL}/notes`,
+  NOTES_CREATE: `${API_BASE_URL}/notes`,
+  NOTES_UPDATE: (id: number) => `${API_BASE_URL}/notes/${id}`,
+  NOTES_DELETE: (id: number) => `${API_BASE_URL}/notes/${id}`
 }
 
 // Helper function for making API requests with error handling

@@ -20,7 +20,14 @@
           <div v-if="showFileMenu" class="dropdown-menu">
             <div class="menu-option" @click="newCanvas">New</div>
             <div class="menu-option" @click="triggerFileUpload">Open...</div>
-            <div class="menu-option" @click="saveImage">Save</div>
+            <div class="menu-option" @click="loadExistingArtwork()">Load Existing...</div>
+            <hr class="menu-separator">
+            <div class="menu-option" @click="saveImage">
+              Save 
+              <span v-if="saveStatus === 'saving'" class="save-indicator">💾</span>
+              <span v-else-if="saveStatus === 'saved'" class="save-indicator">✅</span>
+              <span v-else-if="saveStatus === 'error'" class="save-indicator">❌</span>
+            </div>
             <div class="menu-option" @click="downloadImage">Save As...</div>
             <hr class="menu-separator">
             <div class="menu-option" @click="clearCanvas">Clear All</div>
@@ -220,7 +227,16 @@
 
       <!-- Status Bar -->
       <div class="status-bar">
-        <div class="status-item">For Help, click Help Topics on the Help Menu.</div>
+        <div class="status-left">
+          <div class="status-item">
+            <span v-if="saveStatus === 'saving'">💾 Saving...</span>
+            <span v-else-if="saveStatus === 'saved'">✅ Saved</span>
+            <span v-else-if="saveStatus === 'error'">❌ Save failed</span>
+            <span v-else-if="canvasId">🤝 Collaborative artwork</span>
+            <span v-else>🎨 New artwork</span>
+          </div>
+          <div class="status-item" v-if="canvasId">ID: {{ canvasId }}</div>
+        </div>
         <div class="status-right">
           <div class="status-item">{{ canvasSize.width }} x {{ canvasSize.height }}px</div>
           <div class="status-item">{{ contributors.length }} artist{{ contributors.length === 1 ? '' : 's' }}</div>
@@ -270,6 +286,12 @@ const showFileMenu = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const startPos = ref({ x: 0, y: 0 })
 const currentShape = ref<{ x: number, y: number, width: number, height: number } | null>(null)
+
+// Canvas state tracking
+const canvasId = ref<string | null>(null)
+const isNewCanvas = ref(true)
+const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+const lastSaveTime = ref<Date | null>(null)
 
 const colorPalette = [
   '#000000', '#808080', '#800000', '#808000', '#008000', '#008080', '#000080', '#800080',
@@ -435,6 +457,18 @@ function clearCanvas() {
   saveCanvas()
 }
 
+function resetCanvasState() {
+  // Reset canvas state for new artwork
+  canvasId.value = null
+  isNewCanvas.value = true
+  saveStatus.value = 'idle'
+  lastSaveTime.value = null
+  
+  // Clear localStorage
+  localStorage.removeItem('portfolioCanvasId')
+  localStorage.removeItem('portfolioPaintData')
+}
+
 function addContributor() {
   const username = 'visitor'
   
@@ -453,8 +487,10 @@ function toggleFileMenu() {
 }
 
 function newCanvas() {
+  resetCanvasState()
   clearCanvas()
   showFileMenu.value = false
+  console.log('🎨 Started new canvas')
 }
 
 function triggerFileUpload() {
@@ -650,34 +686,92 @@ function saveCanvas() {
 }
 
 async function saveCanvasToBackend(imageData: string) {
+  saveStatus.value = 'saving'
+  
   try {
     const artworkData = {
       username: 'visitor',
-      title: 'Artwork by visitor',
+      title: `Artwork by visitor - ${new Date().toLocaleString()}`,
       image_data: imageData,
       contributors: contributors.value.map(c => ({ name: c.name, color: c.color })),
       is_public: true
     }
     
-    const response = await fetch(API_ENDPOINTS.CANVAS_SAVE, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(artworkData)
-    })
+    let response: Response
+    
+    if (isNewCanvas.value || !canvasId.value) {
+      // Create new artwork
+      response = await fetch(API_ENDPOINTS.CANVAS_SAVE, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(artworkData)
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        canvasId.value = result.id
+        isNewCanvas.value = false
+        console.log('✅ New artwork created:', result.id)
+        
+        // Store canvas ID in localStorage for persistence
+        localStorage.setItem('portfolioCanvasId', result.id)
+      }
+    } else {
+      // Update existing artwork
+      const updateEndpoint = `${API_ENDPOINTS.CANVAS_SAVE}/${canvasId.value}`
+      response = await fetch(updateEndpoint, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(artworkData)
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Artwork updated:', canvasId.value)
+      }
+    }
     
     if (response.ok) {
-      const result = await response.json()
-      console.log('✅ Artwork saved to backend:', result.id)
+      saveStatus.value = 'saved'
+      lastSaveTime.value = new Date()
+      
+      // Clear saved status after 3 seconds
+      setTimeout(() => {
+        if (saveStatus.value === 'saved') {
+          saveStatus.value = 'idle'
+        }
+      }, 3000)
+    } else {
+      throw new Error(`Save failed with status: ${response.status}`)
     }
+    
   } catch (error) {
-    console.log('❌ Failed to save artwork to backend, using local storage only')
+    console.log('❌ Failed to save artwork to backend:', error)
+    saveStatus.value = 'error'
+    
+    // Clear error status after 3 seconds
+    setTimeout(() => {
+      if (saveStatus.value === 'error') {
+        saveStatus.value = 'idle'
+      }
+    }, 3000)
   }
 }
 
 function loadCanvas() {
   const savedData = localStorage.getItem('portfolioPaintData')
+  const savedCanvasId = localStorage.getItem('portfolioCanvasId')
+  
+  // Load canvas ID if exists
+  if (savedCanvasId) {
+    canvasId.value = savedCanvasId
+    isNewCanvas.value = false
+  }
+  
   if (!savedData || !ctx || !canvas.value) return
   
   try {
@@ -693,6 +787,8 @@ function loadCanvas() {
       drawingData = data.drawingData
       contributors.value = data.drawingData.contributors || []
     }
+    
+    console.log(`📄 Canvas loaded ${canvasId.value ? '(existing artwork)' : '(new artwork)'}`)
   } catch (error) {
     console.log('Could not load saved canvas')
   }
@@ -710,6 +806,62 @@ async function loadPublicArtworks() {
   } catch (error) {
     console.log('❌ Could not load public artworks from backend')
     return []
+  }
+}
+
+// Load existing artwork by ID for collaboration
+async function loadExistingArtwork(artworkId?: string) {
+  if (!artworkId) {
+    // Prompt user for artwork ID
+    artworkId = prompt('Enter artwork ID to collaborate on:')
+    if (!artworkId) return
+  }
+  
+  try {
+    const response = await fetch(`${API_ENDPOINTS.CANVAS_SAVE}/${artworkId}`)
+    if (response.ok) {
+      const artwork = await response.json()
+      
+      // Load the artwork data
+      canvasId.value = artwork.id
+      isNewCanvas.value = false
+      
+      // Load contributors
+      if (artwork.contributors) {
+        contributors.value = artwork.contributors
+        drawingData.contributors = artwork.contributors
+      }
+      
+      // Load image data to canvas
+      if (artwork.image_data && ctx) {
+        const img = new Image()
+        img.onload = () => {
+          if (ctx) {
+            ctx.clearRect(0, 0, canvasSize.value.width, canvasSize.value.height)
+            ctx.drawImage(img, 0, 0)
+          }
+        }
+        img.src = artwork.image_data
+      }
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('portfolioCanvasId', artwork.id)
+      const saveData = {
+        imageData: artwork.image_data,
+        drawingData,
+        timestamp: Date.now()
+      }
+      localStorage.setItem('portfolioPaintData', JSON.stringify(saveData))
+      
+      console.log('🤝 Loaded existing artwork for collaboration:', artwork.id)
+      showFileMenu.value = false
+      
+    } else {
+      alert('Artwork not found. Please check the ID and try again.')
+    }
+  } catch (error) {
+    console.log('❌ Failed to load existing artwork:', error)
+    alert('Failed to load artwork. Please try again.')
   }
 }
 
@@ -777,6 +929,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 20px;
+  padding-top: 120px;
   font-family: 'MS Sans Serif', Tahoma, Arial, sans-serif;
   font-size: 11px;
 }
@@ -889,6 +1042,11 @@ onUnmounted(() => {
   background: #808080;
   border: none;
   margin: 2px 0;
+}
+
+.save-indicator {
+  float: right;
+  font-size: 10px;
 }
 
 /* Main Paint Area */
@@ -1040,6 +1198,11 @@ onUnmounted(() => {
   color: #000000;
 }
 
+.status-left {
+  display: flex;
+  gap: 12px;
+}
+
 .status-right {
   display: flex;
   gap: 12px;
@@ -1053,6 +1216,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .paint-hero {
     padding: 10px;
+    padding-top: 100px;
   }
   
   .paint-window {
@@ -1083,6 +1247,7 @@ onUnmounted(() => {
 @media (max-width: 480px) {
   .paint-hero {
     padding: 5px;
+    padding-top: 90px;
   }
   
   .tool-palette {

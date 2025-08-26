@@ -5,22 +5,7 @@
         <!-- Chatbot will be positioned here -->
       </div>
 
-      <nav class="nav-desktop">
-        <Tooltip
-          v-for="item in navItems"
-          :key="item.href"
-          :content="`Navigate to ${item.label} section`"
-          placement="bottom"
-        >
-          <button
-            @click="scrollToSection(item.href)"
-            class="nav-link"
-          >
-            {{ item.label }}
-            <span class="nav-underline"></span>
-          </button>
-        </Tooltip>
-      </nav>
+      <!-- Navigation removed - using ModernNavbar component instead -->
 
       <div class="header-actions">
         <!-- Review Display -->
@@ -52,14 +37,7 @@
           </Button>
         </Tooltip>
 
-        <Button 
-          @click="scrollToSection('contact')" 
-          size="sm" 
-          class="contact-btn"
-        >
-          <Mail class="h-4 w-4 mr-2" />
-          Contact
-        </Button>
+
 
         <Button 
           @click="toggleMobileMenu" 
@@ -218,6 +196,41 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: transparent;
+  backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 1rem 3rem 1rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: transparent;
+}
+
+.header-logo {
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+  padding-right: 1rem;
+}
+
 .review-display {
   display: flex;
   align-items: center;
@@ -261,4 +274,80 @@ onUnmounted(() => {
     display: none; /* Hide on mobile to save space */
   }
 }
+
+/* Mobile menu styles */
+.mobile-menu {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 998;
+  padding-top: 5rem;
+}
+
+.mobile-nav {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  margin: 1rem;
+  padding: 2rem;
+  max-width: 400px;
+  margin: 1rem auto;
+}
+
+.mobile-nav-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: none;
+  background: transparent;
+  color: #374151;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.mobile-nav-link:hover {
+  background: rgba(0, 0, 0, 0.05);
+  transform: translateX(4px);
+}
+
+.mobile-nav-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile menu transitions */
+.mobile-menu-enter-active,
+.mobile-menu-leave-active {
+  transition: all 0.3s ease;
+}
+
+.mobile-menu-enter-from,
+.mobile-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-20px);
+}
+
+.mobile-menu-enter-to,
+.mobile-menu-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Header visible - navigation replaced by ModernNavbar */
 </style>

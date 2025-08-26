@@ -28,7 +28,7 @@
 
         <div class="footer-bottom">
           <p class="footer-copyright">
-            © {{ new Date().getFullYear() }} Cruso. Built with Vue 3, TypeScript & shadcn/ui.
+            © {{ new Date().getFullYear() }} Robinson. Built with Vue 3, TypeScript, GSAP & shadcn/ui.
           </p>
         </div>
       </div>

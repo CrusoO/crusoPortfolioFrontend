@@ -21,8 +21,19 @@
               <!-- Sidebar -->
               <div class="notes-sidebar">
                 <div class="notes-header">
-                  <h3 class="notes-title">My Notes</h3>
-                  <span class="notes-count">{{ filteredArticles.length }}</span>
+                  <div class="notes-header-left">
+                    <h3 class="notes-title">My Notes</h3>
+                    <span class="notes-count">{{ filteredArticles.length }}</span>
+                  </div>
+                  <Button 
+                    @click="openAdminPanel"
+                    variant="ghost"
+                    size="sm"
+                    class="admin-btn"
+                    title="Admin Panel"
+                  >
+                    <Settings class="h-4 w-4" />
+                  </Button>
                 </div>
                 
                 <div class="search-container">
@@ -204,6 +215,13 @@
         </div>
       </div>
     </div>
+    
+    <!-- Admin Panel -->
+    <AdminAuth 
+      :show-admin-panel="showAdminPanel"
+      @close-admin-panel="closeAdminPanel"
+      @notes-updated="handleNotesUpdated"
+    />
   </section>
 </template>
 
@@ -215,10 +233,11 @@
 
 import { ref, computed } from 'vue'
 import { API_ENDPOINTS } from '@/config/api'
-import { FileText, BookOpen, ChevronRight, MessageCircle, Search } from 'lucide-vue-next'
+import { FileText, BookOpen, ChevronRight, MessageCircle, Search, Settings } from 'lucide-vue-next'
 import Progress from '@/components/ui/Progress.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import Button from '@/components/ui/Button.vue'
+import AdminAuth from '@/components/AdminAuth.vue'
 
 interface Article {
   id: number
@@ -235,6 +254,7 @@ const activeTab = ref('articles')
 const searchQuery = ref('')
 const selectedArticle = ref<Article | null>(null)
 const isLoadingNotes = ref(true)
+const showAdminPanel = ref(false)
 
 // Load notes from backend
 async function loadNotesFromBackend() {
@@ -454,6 +474,9 @@ if (sortedArticles.length > 0) {
   selectedArticle.value = sortedArticles[0] // This will be the "Draft" note - most recent
 }
 
+// Load notes from backend on component mount
+loadNotesFromBackend()
+
 function selectArticle(article: Article) {
   selectedArticle.value = article
 }
@@ -503,15 +526,45 @@ function setActiveTab(value: string) {
 function openDiscord() {
   window.open(discordLink, '_blank')
 }
+
+// Admin functions
+function openAdminPanel() {
+  showAdminPanel.value = true
+}
+
+function closeAdminPanel() {
+  showAdminPanel.value = false
+}
+
+function handleNotesUpdated() {
+  // Reload notes when admin makes changes
+  loadNotesFromBackend()
+}
 </script>
 
 <style>
 /* All existing styles preserved, just adding new content-specific styles */
 
+/* Section Title Spacing */
+.section-title {
+  margin-bottom: 2.5rem !important;
+}
+
+/* Add spacing below main content sections */
+.skills-content {
+  margin-bottom: 4rem;
+}
+
+.experience-section {
+  margin-bottom: 4rem;
+  padding-top: 2rem;
+}
+
 /* Apple Notes Style Interface */
 .apple-notes-container {
   display: flex;
   height: 70vh;
+  margin-bottom: 2rem;
   background: #ffffff;
   border-radius: 12px;
   overflow: hidden;
@@ -533,6 +586,24 @@ function openDiscord() {
   justify-content: space-between;
   padding: 20px 16px 12px;
   border-bottom: 1px solid #e5e5e7;
+}
+
+.notes-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-btn {
+  padding: 6px;
+  border-radius: 6px;
+  color: #86868b;
+  transition: all 0.2s ease;
+}
+
+.admin-btn:hover {
+  background: #e5e5e7;
+  color: #1d1d1f;
 }
 
 .notes-title {
