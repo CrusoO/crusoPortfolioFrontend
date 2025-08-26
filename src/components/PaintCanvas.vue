@@ -237,6 +237,7 @@
 */
 
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 
 interface DrawingData {
   strokes: Array<{
@@ -255,11 +256,7 @@ interface DrawingData {
   }>
 }
 
-interface Props {
-  username: string
-}
-
-const props = defineProps<Props>()
+// No props needed - always use "visitor" as default username
 
 const canvas = ref<HTMLCanvasElement>()
 const isDrawing = ref(false)
@@ -391,7 +388,7 @@ function draw(e: MouseEvent) {
     color: brushColor.value,
     size: brushSize.value,
     tool: currentTool.value,
-    user: props.username || 'Anonymous'
+    user: 'visitor'
   })
   
   lastX = x
@@ -439,7 +436,7 @@ function clearCanvas() {
 }
 
 function addContributor() {
-  const username = props.username || 'Anonymous'
+  const username = 'visitor'
   
   if (!contributors.value.find(c => c.name === username)) {
     const colors = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f97316']
@@ -655,14 +652,14 @@ function saveCanvas() {
 async function saveCanvasToBackend(imageData: string) {
   try {
     const artworkData = {
-      username: props.username || 'Anonymous',
-      title: `Artwork by ${props.username || 'Anonymous'}`,
+      username: 'visitor',
+      title: 'Artwork by visitor',
       image_data: imageData,
       contributors: contributors.value.map(c => ({ name: c.name, color: c.color })),
       is_public: true
     }
     
-    const response = await fetch('http://localhost:8000/api/canvas/save', {
+    const response = await fetch(API_ENDPOINTS.CANVAS_SAVE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -704,7 +701,7 @@ function loadCanvas() {
 // Load public artworks from backend (could be used for a gallery feature)
 async function loadPublicArtworks() {
   try {
-    const response = await fetch('http://localhost:8000/api/canvas/gallery?limit=10')
+    const response = await fetch(`${API_ENDPOINTS.CANVAS_GALLERY}?limit=10`)
     if (response.ok) {
       const artworks = await response.json()
       console.log('🎨 Public artworks available:', artworks.length)

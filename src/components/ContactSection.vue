@@ -303,6 +303,7 @@
 */
 
 import { ref, computed, watch } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 import { Mail, Phone, MapPin, Send, RotateCcw, Code, Globe, Smartphone, Palette, Database, Zap, CheckCircle, XCircle, Briefcase, Star } from 'lucide-vue-next'
 import { Github, Linkedin, Twitter } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
@@ -468,7 +469,7 @@ async function handleSubmit() {
           rating: 5 // Default rating - could add rating input to form
         }
         
-        const response = await fetch('http://localhost:8000/api/reviews', {
+        const response = await fetch(API_ENDPOINTS.REVIEWS, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -524,7 +525,7 @@ async function handleSubmit() {
           message: formData.value.message
         }
         
-        const response = await fetch('http://localhost:8000/api/contact/submit', {
+        const response = await fetch(API_ENDPOINTS.CONTACT_SUBMIT, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

@@ -93,27 +93,28 @@ const tooltipStyle = computed(() => {
   return style
 })
 
-function show(event: MouseEvent | FocusEvent): void {
+function showTooltip(target: HTMLElement): void {
   if (timeoutId) clearTimeout(timeoutId)
   
-  const target = event.currentTarget as HTMLElement
   triggerRect.value = target.getBoundingClientRect()
   
-  timeoutId = setTimeout(async () => {
+  timeoutId = setTimeout(() => {
     isVisible.value = true
-    await nextTick()
+    nextTick()
   }, props.delay)
 }
 
 function handleMouseEnter(event: MouseEvent): void {
-  show(event)
+  const target = event.currentTarget as HTMLElement
+  showTooltip(target)
 }
 
 function handleFocus(event: FocusEvent): void {
-  show(event)
+  const target = event.currentTarget as HTMLElement
+  showTooltip(target)
 }
 
-function hide() {
+function hide(): void {
   if (timeoutId) clearTimeout(timeoutId)
   isVisible.value = false
 }

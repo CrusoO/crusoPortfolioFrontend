@@ -1,0 +1,33 @@
+// API Configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://your-backend.onrender.com/api'
+
+export const API_ENDPOINTS = {
+  CHAT_MESSAGE: `${API_BASE_URL}/chat/message`,
+  CANVAS_SAVE: `${API_BASE_URL}/canvas/save`,
+  CANVAS_GALLERY: `${API_BASE_URL}/canvas/gallery`,
+  REVIEWS: `${API_BASE_URL}/reviews`,
+  CONTACT_SUBMIT: `${API_BASE_URL}/contact/submit`,
+  NOTES: `${API_BASE_URL}/notes`
+}
+
+// Helper function for making API requests with error handling
+export async function apiRequest(url: string, options: RequestInit = {}) {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      },
+      ...options
+    })
+    
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.log(`API request failed for ${url}:`, error)
+    throw error
+  }
+}

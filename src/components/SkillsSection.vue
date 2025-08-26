@@ -214,6 +214,7 @@
 */
 
 import { ref, computed } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 import { FileText, BookOpen, ChevronRight, MessageCircle, Search } from 'lucide-vue-next'
 import Progress from '@/components/ui/Progress.vue'
 import Tabs from '@/components/ui/Tabs.vue'
@@ -238,7 +239,7 @@ const isLoadingNotes = ref(true)
 // Load notes from backend
 async function loadNotesFromBackend() {
   try {
-    const response = await fetch('http://localhost:8000/api/notes')
+    const response = await fetch(API_ENDPOINTS.NOTES)
     if (response.ok) {
       const backendNotes = await response.json()
       

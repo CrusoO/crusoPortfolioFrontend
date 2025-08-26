@@ -95,12 +95,9 @@
 */
 
 import { ref, onMounted, nextTick } from 'vue'
+import { API_ENDPOINTS } from '@/config/api'
 
-interface Props {
-  username?: string
-}
-
-const props = defineProps<Props>()
+// No props needed - bot will always greet as "visitor"
 
 interface Message {
   id: number
@@ -129,23 +126,21 @@ const showSpeechBubble = ref(false)
 const fullWelcomeMessage = ref('')
 const isSpeechTyping = ref(false)
 
-// Predefined responses about the portfolio
-const getResponses = (username?: string) => [
-  `Hi ${username || 'there'}! 👋 This is Robinson! I'm excited to share my portfolio with you. How can I help you today? 🤖`,
+// Predefined responses about the portfolio - always greet as "visitor"
+const responses = [
+  "Hi visitor! 👋 This is Robinson! I'm excited to share my portfolio with you. How can I help you today? 🤖",
   "I'm a passionate developer specializing in AI-powered applications and cutting-edge agricultural technology! 🚀",
   "My CodeSensei project is an AI-powered code analysis tool that transforms applications into interactive learning platforms! 💻",
   "Check out my AGRO Frontend - it's a modern agricultural management system with advanced analytics! 🌱",
   "I'm based in beautiful Bangalore, India, the Silicon Valley of India! Always excited about innovative tech! 📍",
   "Want to collaborate? Scroll down to my contact form and let's build something amazing together! 💌",
   "My tech arsenal includes JavaScript, Python, React, Vue.js, AI/ML, Docker, and many more powerful tools! ⚡",
-  `Nice to meet you, ${username || 'friend'}! I'm Cruso, Robinson's digital assistant! Drag me anywhere and let's chat about technology! 🎮`,
+  "Nice to meet you, visitor! I'm Cruso, Robinson's digital assistant! Drag me anywhere and let's chat about technology! 🎮",
   "My portfolio showcases current innovations and exciting future projects that will change the world! 🔮",
   "Need a tour? I know every section of this portfolio like the back of my digital hand! 🧭",
   "I love discussing AI, machine learning, and how technology can solve real-world problems! 🧠",
-  `${username ? `${username}, you're awesome for checking out` : 'Thanks for exploring'} Robinson's work! Ask me anything technical! 🚀`
+  "Thanks for exploring Robinson's work, visitor! Ask me anything technical! 🚀"
 ]
-
-const responses = getResponses(props.username)
 
 let messageId = 0
 
@@ -296,12 +291,9 @@ function toggleChat() {
   hasUnread.value = false
   
   if (isOpen.value && messages.value.length === 0) {
-    // Welcome message with username
+    // Welcome message for visitor
     setTimeout(() => {
-      const welcomeMsg = props.username 
-        ? `Hi ${props.username}! 👋 This is Robinson! I'm excited to share my portfolio with you. How can I help you today? 🤖`
-        : responses[0]
-      addBotMessage(welcomeMsg)
+      addBotMessage(responses[0])
     }, 500)
   }
 }
@@ -331,14 +323,14 @@ async function sendMessage() {
   
   try {
     // Send message to backend API
-    const response = await fetch('http://localhost:8000/api/chat/message', {
+    const response = await fetch(API_ENDPOINTS.CHAT_MESSAGE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         message: userMessage,
-        username: props.username || 'Anonymous'
+        username: 'visitor'
       })
     })
     
@@ -458,13 +450,13 @@ function typeMessage(message: string, callback?: () => void) {
 
 // Initial welcome sequence with speech bubble
 function startWelcomeSequence() {
-  if (props.username && isInitialLoad.value) {
+  if (isInitialLoad.value) {
     showingWelcome.value = true
     
     // Start in paint canvas with welcome message
     setTimeout(() => {
       showSpeechBubble.value = true
-      fullWelcomeMessage.value = `Hi ${props.username}! Would you like to paint? Ask me any questions if you need help!`
+      fullWelcomeMessage.value = "Hi visitor! Would you like to paint? Ask me any questions if you need help!"
       
       typeMessage(fullWelcomeMessage.value, () => {
         // After message completes, wait then move to top-left and sleep
