@@ -1,5 +1,5 @@
 <template>
-  <div class="admin-notes-manager">
+  <div class="admin-notes-manager" :class="{ 'fullscreen': isFullscreen }">
     <!-- Add/Edit Note Form -->
     <div v-if="showAddForm || editingNote" class="note-form-container">
       <div class="note-form">
@@ -109,6 +109,27 @@
             <RotateCcw class="h-4 w-4 mr-2" />
             Refresh
           </Button>
+          <Button 
+            @click="openAudioManager" 
+            variant="outline" 
+            size="sm"
+            title="Manage audio files and cache"
+            class="audio-manager-btn"
+          >
+            <Volume2 class="h-4 w-4 mr-1" />
+            Audio Manager
+          </Button>
+          <Button 
+            @click="toggleFullscreen" 
+            variant="outline" 
+            size="sm" 
+            :title="isFullscreen ? 'Exit Fullscreen (ESC)' : 'Enter Fullscreen'"
+            class="fullscreen-toggle-btn"
+          >
+            <Minimize class="h-4 w-4 mr-1" v-if="isFullscreen" />
+            <Maximize class="h-4 w-4 mr-1" v-else />
+            {{ isFullscreen ? 'Exit' : 'Fullscreen' }}
+          </Button>
         </div>
       </div>
       
@@ -188,8 +209,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, onMounted } from 'vue'
-import { X, Save, Edit, Trash2, FileText, RotateCcw } from 'lucide-vue-next'
+import { ref, computed, defineProps, defineEmits, onMounted, onUnmounted } from 'vue'
+import { X, Save, Edit, Trash2, FileText, RotateCcw, Maximize, Minimize, Volume2 } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
@@ -225,6 +246,7 @@ const isLoading = ref(false)
 const isSaving = ref(false)
 const searchQuery = ref('')
 const editingNote = ref<Note | null>(null)
+const isFullscreen = ref(false)
 
 const formData = ref({
   title: '',
@@ -371,6 +393,39 @@ function closeForm() {
   emit('closeAddForm')
 }
 
+function toggleFullscreen() {
+  isFullscreen.value = !isFullscreen.value
+  
+  // Add/remove fullscreen classes to body to handle scroll and other global styles
+  if (isFullscreen.value) {
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('notes-fullscreen')
+    // Add escape key listener for fullscreen mode
+    document.addEventListener('keydown', handleEscapeKey)
+  } else {
+    document.body.style.overflow = ''
+    document.body.classList.remove('notes-fullscreen')
+    // Remove escape key listener
+    document.removeEventListener('keydown', handleEscapeKey)
+  }
+}
+
+function handleEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && isFullscreen.value) {
+    toggleFullscreen()
+  }
+}
+
+function openAudioManager() {
+  // Open audio manager in a new window/tab or modal
+  // This could be implemented as a modal overlay or a new route
+  const audioManagerUrl = '/admin/audio-manager'
+  window.open(audioManagerUrl, '_blank', 'width=1200,height=800,scrollbars=yes')
+  
+  // Alternative: Emit event to parent component to show audio manager modal
+  // emit('openAudioManager')
+}
+
 function getSnippet(content: string, length: number = 100): string {
   // Remove HTML tags and get plain text snippet
   const plainText = content.replace(/<[^>]*>/g, '')
@@ -386,6 +441,15 @@ function formatDate(dateString: string): string {
 onMounted(() => {
   loadNotes()
 })
+
+onUnmounted(() => {
+  // Cleanup fullscreen state when component is destroyed
+  if (isFullscreen.value) {
+    document.body.style.overflow = ''
+    document.body.classList.remove('notes-fullscreen')
+    document.removeEventListener('keydown', handleEscapeKey)
+  }
+})
 </script>
 
 <style scoped>
@@ -393,6 +457,56 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  transition: all 0.3s ease;
+}
+
+/* Fullscreen Mode */
+.admin-notes-manager.fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: hsl(var(--background));
+  z-index: 9999;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.admin-notes-manager.fullscreen .notes-list-container {
+  height: calc(100vh - 2rem);
+  max-height: none;
+}
+
+.admin-notes-manager.fullscreen .notes-grid {
+  height: calc(100vh - 140px);
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.admin-notes-manager.fullscreen .list-header {
+  position: sticky;
+  top: 0;
+  background: hsl(var(--background));
+  z-index: 10;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid hsl(var(--border));
+  margin-bottom: 1rem;
+}
+
+.admin-notes-manager.fullscreen .note-form-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 11;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
 }
 
 /* Note Form */
@@ -520,6 +634,22 @@ onMounted(() => {
 
 .search-input {
   width: 250px;
+}
+
+.fullscreen-toggle-btn {
+  min-width: 100px;
+  position: relative;
+  background: hsl(var(--primary)/10) !important;
+  border-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary)) !important;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.fullscreen-toggle-btn:hover {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  transform: scale(1.02);
 }
 
 .loading-state, .empty-state {
@@ -666,14 +796,23 @@ onMounted(() => {
   .list-header {
     flex-direction: column;
     align-items: stretch;
+    gap: 1rem;
   }
   
   .list-actions {
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
   
   .search-input {
-    width: 200px;
+    width: 150px;
+    min-width: 120px;
+  }
+  
+  .fullscreen-toggle-btn {
+    flex-shrink: 0;
+    order: 999;
   }
   
   .notes-grid {
@@ -683,5 +822,31 @@ onMounted(() => {
   .form-actions {
     flex-direction: column-reverse;
   }
+}
+</style>
+
+<style>
+/* Global styles for fullscreen mode */
+body.notes-fullscreen {
+  overflow: hidden !important;
+}
+
+/* Enhanced scrollbar for fullscreen mode */
+.admin-notes-manager.fullscreen .notes-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-notes-manager.fullscreen .notes-grid::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+.admin-notes-manager.fullscreen .notes-grid::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary));
+  border-radius: 4px;
+}
+
+.admin-notes-manager.fullscreen .notes-grid::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary)/80);
 }
 </style>

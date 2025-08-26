@@ -7,13 +7,6 @@
   >
     <div class="portfolio-container">
       <header class="section-header">
-        <div class="section-badge" role="img" aria-label="Code icon - Recent Work">
-          <Code class="h-4 w-4" aria-hidden="true" />
-          Recent Work
-      </div>
-
-
-
         <h2 id="projects-heading" class="section-title">
           Featured <span style="color: hsl(var(--primary))">Projects</span>
         </h2>
@@ -157,19 +150,7 @@ function viewProject(projectId: number) {
   margin-bottom: 4rem;
 }
 
-.section-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: hsl(var(--primary)/10);
-  border: 1px solid hsl(var(--primary)/20);
-  color: hsl(var(--primary));
-  padding: 0.5rem 1rem;
-  border-radius: 2rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-bottom: 1rem;
-}
+
 
 .section-title {
   font-size: clamp(2rem, 5vw, 3rem);

@@ -17,7 +17,7 @@
         <template #default="{ activeTab }">
           <div class="skills-content">
             <!-- Articles Tab Content - Apple Notes Style -->
-            <div v-show="activeTab === 'articles'" class="apple-notes-container">
+            <div v-show="activeTab === 'articles'" class="apple-notes-container" :class="{ 'fullscreen': isNotesFullscreen }">
               <!-- Sidebar -->
               <div class="notes-sidebar">
                 <div class="notes-header">
@@ -25,6 +25,16 @@
                     <h3 class="notes-title">My Notes</h3>
                     <span class="notes-count">{{ filteredArticles.length }}</span>
                   </div>
+                  <Button 
+                    @click="toggleNotesFullscreen" 
+                    variant="ghost" 
+                    size="sm" 
+                    :title="isNotesFullscreen ? 'Exit Fullscreen (ESC)' : 'Enter Fullscreen'"
+                    class="fullscreen-btn"
+                  >
+                    <Minimize class="h-3.5 w-3.5" v-if="isNotesFullscreen" />
+                    <Maximize class="h-3.5 w-3.5" v-else />
+                  </Button>
                   <Button 
                     @click="openAdminPanel"
                     variant="ghost"
@@ -75,6 +85,104 @@
                       <span class="article-date">{{ formatDate(selectedArticle.createdAt) }}</span>
                       <span class="article-category" :class="selectedArticle.category">{{ selectedArticle.category }}</span>
                       <span class="article-read-time">{{ selectedArticle.readTime }} min read</span>
+                    </div>
+                    
+                    <!-- Audio Player Controls -->
+                    <div class="audio-player">
+                      <div class="audio-controls">
+                        <Button 
+                          @click="playSelectedArticle"
+                          v-if="!isSpeaking && !isLoadingAudio"
+                          variant="ghost" 
+                          size="sm"
+                          class="audio-btn play-btn"
+                          title="Listen to this content"
+                        >
+                          <Play class="h-4 w-4 mr-2" />
+                          Listen
+                          <span class="audio-badge" :class="useAIVoice ? 'ai-voice' : 'browser-voice'">
+                            {{ useAIVoice ? 'AI Voice' : 'Browser' }}
+                          </span>
+                        </Button>
+                        
+                        <!-- Loading State -->
+                        <Button 
+                          v-if="isLoadingAudio"
+                          variant="ghost" 
+                          size="sm"
+                          class="audio-btn loading-btn"
+                          disabled
+                          title="Generating AI voice..."
+                        >
+                          <div class="loading-spinner"></div>
+                          Loading Audio...
+                        </Button>
+                        
+                        <Button 
+                          @click="stopSpeech"
+                          v-if="isSpeaking"
+                          variant="ghost" 
+                          size="sm"
+                          class="audio-btn stop-btn"
+                          title="Stop audio"
+                        >
+                          <Square class="h-4 w-4 mr-2" />
+                          Stop
+                        </Button>
+                        
+                        <Button 
+                          @click="toggleMute"
+                          v-if="isSpeaking"
+                          variant="ghost" 
+                          size="sm"
+                          class="audio-btn"
+                          :title="isMuted ? 'Unmute' : 'Mute'"
+                        >
+                          <VolumeX class="h-4 w-4" v-if="isMuted" />
+                          <Volume2 class="h-4 w-4" v-else />
+                        </Button>
+                        
+                        <!-- Voice Mode Toggle -->
+                        <Button 
+                          @click="toggleVoiceMode"
+                          v-if="!isSpeaking && !isLoadingAudio"
+                          variant="outline" 
+                          size="sm"
+                          class="voice-toggle-btn"
+                          :title="useAIVoice ? 'Switch to Basic Browser Voice' : 'Switch to AI Voice (Human-like)'"
+                        >
+                          {{ useAIVoice ? '🔄 Basic' : '🧠 AI Voice' }}
+                        </Button>
+                        
+                        <!-- Speed Control -->
+                        <div v-if="isSpeaking" class="speed-control">
+                          <span class="speed-label">Speed:</span>
+                          <input 
+                            type="range" 
+                            v-model="speechRate"
+                            min="0.5" 
+                            max="1.5" 
+                            step="0.1"
+                            class="speed-slider"
+                            @input="updateSpeechRate"
+                            title="Adjust playback speed"
+                          />
+                          <span class="speed-value">{{ speechRate }}x</span>
+                        </div>
+                      </div>
+                      
+                      <div v-if="isSpeaking" class="audio-status">
+                        <div class="audio-indicator">
+                          <div class="audio-waves">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                          </div>
+                          <span class="status-text">
+                            Playing
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   
@@ -231,9 +339,10 @@
   Organized by categories with visual icons and badges
 */
 
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { API_ENDPOINTS } from '@/config/api'
-import { FileText, BookOpen, ChevronRight, MessageCircle, Search, Settings } from 'lucide-vue-next'
+import elevenLabsTTS from '@/services/elevenlabs-tts'
+import { FileText, BookOpen, ChevronRight, MessageCircle, Search, Settings, Maximize, Minimize, Play, Square, Volume2, VolumeX } from 'lucide-vue-next'
 import Progress from '@/components/ui/Progress.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import Button from '@/components/ui/Button.vue'
@@ -255,6 +364,19 @@ const searchQuery = ref('')
 const selectedArticle = ref<Article | null>(null)
 const isLoadingNotes = ref(true)
 const showAdminPanel = ref(false)
+const isNotesFullscreen = ref(false)
+
+// Speech Synthesis state
+const isSpeaking = ref(false)
+const isPaused = ref(false)
+const isMuted = ref(false)
+const speechRate = ref(0.85) // Slower rate for better comprehension
+const speechVolume = ref(0.9)
+const speechPitch = ref(0.95) // Slightly lower pitch for warmth
+const currentSpeech = ref<SpeechSynthesisUtterance | null>(null)
+const currentAudio = ref<HTMLAudioElement | null>(null)
+const useAIVoice = ref(true) // Toggle between AI voice and browser voice
+const isLoadingAudio = ref(false)
 
 // Load notes from backend
 async function loadNotesFromBackend() {
@@ -540,6 +662,411 @@ function handleNotesUpdated() {
   // Reload notes when admin makes changes
   loadNotesFromBackend()
 }
+
+function toggleNotesFullscreen() {
+  // Ensure we're on the articles tab when entering fullscreen
+  if (!isNotesFullscreen.value) {
+    activeTab.value = 'articles'
+  }
+  
+  isNotesFullscreen.value = !isNotesFullscreen.value
+  
+  // Add/remove fullscreen classes to body to handle scroll and other global styles
+  if (isNotesFullscreen.value) {
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('notes-fullscreen')
+    // Add escape key listener for fullscreen mode
+    document.addEventListener('keydown', handleNotesEscapeKey)
+  } else {
+    document.body.style.overflow = ''
+    document.body.classList.remove('notes-fullscreen')
+    // Remove escape key listener
+    document.removeEventListener('keydown', handleNotesEscapeKey)
+  }
+}
+
+function handleNotesEscapeKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && isNotesFullscreen.value) {
+    toggleNotesFullscreen()
+  }
+}
+
+// Speech Synthesis Functions
+// Helper function to set preferred voice (moved outside to avoid strict mode issues)
+function setPreferredVoice(voices: SpeechSynthesisVoice[], utterance: SpeechSynthesisUtterance) {
+      // Priority list of high-quality, natural-sounding voices
+      const voicePriority = [
+        // Premium quality voices (if available)
+        'Microsoft Zira - English (United States)',
+        'Microsoft Hazel - English (Great Britain)',
+        'Google UK English Female',
+        'Google US English Female',
+        'Alex', // macOS
+        'Samantha', // macOS
+        'Victoria', // macOS
+        'Karen', // older systems
+        'Moira', // macOS Scottish
+        'Fiona', // macOS Scottish
+        // Fallback patterns
+        'en-GB', 'en-US', 'en-AU'
+      ]
+      
+      let selectedVoice = null
+      
+      // Try to find voices by exact name match first
+      for (const voiceName of voicePriority) {
+        selectedVoice = voices.find(voice => 
+          voice.name.includes(voiceName) || voice.lang === voiceName
+        )
+        if (selectedVoice) break
+      }
+      
+      // If no priority voice found, find any English female voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => 
+          voice.lang.startsWith('en') && 
+          (voice.name.toLowerCase().includes('female') || 
+           voice.name.toLowerCase().includes('woman') ||
+           !voice.name.toLowerCase().includes('male'))
+        )
+      }
+      
+      // Final fallback: any English voice
+      if (!selectedVoice) {
+        selectedVoice = voices.find(voice => voice.lang.startsWith('en'))
+      }
+      
+  if (selectedVoice) {
+    utterance.voice = selectedVoice
+        console.log('Selected voice:', selectedVoice.name, selectedVoice.lang)
+      }
+    }
+    
+function startSpeech(text: string) {
+  if ('speechSynthesis' in window) {
+    // Stop any current speech
+    stopSpeech()
+    
+    const utterance = new SpeechSynthesisUtterance(text)
+    currentSpeech.value = utterance
+    
+    // Configure speech settings for natural, soothing voice
+    utterance.rate = speechRate.value
+    utterance.volume = isMuted.value ? 0 : speechVolume.value
+    utterance.pitch = speechPitch.value
+    
+    // Find a pleasant voice (prefer female voices for storytelling)
+    let voices = speechSynthesis.getVoices()
+    
+    // If voices aren't loaded yet, wait for them
+    if (voices.length === 0) {
+      speechSynthesis.addEventListener('voiceschanged', () => {
+        voices = speechSynthesis.getVoices()
+        setPreferredVoice(voices, utterance)
+      })
+    } else {
+      setPreferredVoice(voices, utterance)
+    }
+    
+    // Configure utterance events
+    utterance.onstart = () => {
+      isSpeaking.value = true
+      isPaused.value = false
+    }
+    
+    utterance.onend = () => {
+      isSpeaking.value = false
+      isPaused.value = false
+      currentSpeech.value = null
+    }
+    
+    utterance.onerror = () => {
+      isSpeaking.value = false
+      isPaused.value = false
+      currentSpeech.value = null
+    }
+    
+    // Start speaking
+    speechSynthesis.speak(utterance)
+  }
+}
+
+function pauseSpeech() {
+  if (useAIVoice.value) {
+    pauseAIVoice()
+  } else if (speechSynthesis.speaking && !speechSynthesis.paused) {
+    speechSynthesis.pause()
+    isPaused.value = true
+  }
+}
+
+function resumeSpeech() {
+  if (useAIVoice.value) {
+    resumeAIVoice()
+  } else if (speechSynthesis.paused) {
+    speechSynthesis.resume()
+    isPaused.value = false
+  }
+}
+
+function stopSpeech() {
+  if (useAIVoice.value) {
+    stopAIVoice()
+  } else {
+    if (speechSynthesis.speaking) {
+      speechSynthesis.cancel()
+    }
+    isSpeaking.value = false
+    isPaused.value = false
+    currentSpeech.value = null
+  }
+}
+
+function toggleVoiceMode() {
+  useAIVoice.value = !useAIVoice.value
+  stopSpeech() // Stop current playback when switching
+}
+
+function toggleMute() {
+  isMuted.value = !isMuted.value
+  if (useAIVoice.value) {
+    elevenLabsTTS.setVolume(isMuted.value ? 0 : speechVolume.value)
+  } else if (currentSpeech.value) {
+    currentSpeech.value.volume = isMuted.value ? 0 : speechVolume.value
+  }
+}
+
+function updateSpeechRate() {
+  if (useAIVoice.value) {
+    elevenLabsTTS.setPlaybackRate(speechRate.value)
+  } else if (currentSpeech.value) {
+    currentSpeech.value.rate = speechRate.value
+  }
+}
+
+// 🎤 AI VOICE SYSTEM
+// ==================
+// Professional-grade AI voice synthesis
+// ✅ Ultra-realistic human voices
+// ✅ Natural expression and emotion
+// ✅ Premium voice quality
+
+async function startAIVoice(text: string, noteId?: string) {
+  stopSpeech() // Stop any current playback
+  
+  if (text.length > 5000) {
+    // If text is too long, break it into chunks
+    await playTextInChunks(text, noteId)
+    return
+  }
+  
+  isLoadingAudio.value = true
+  isSpeaking.value = true
+  
+  try {
+    await elevenLabsTTS.speakSmart(text, noteId, {
+      voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel - natural female voice
+      stability: 0.5,
+      similarityBoost: 0.75,
+      style: 0,
+      useSpeakerBoost: true
+    })
+  } catch (error) {
+    console.warn('AI voice failed, falling back to browser TTS:', error)
+    useAIVoice.value = false
+    startSpeech(text)
+  } finally {
+    isLoadingAudio.value = false
+    isSpeaking.value = false
+  }
+}
+
+async function generateSpeech(text: string): Promise<string | null> {
+  // Use AI voice for speech generation
+  try {
+    return await elevenLabsTTS.generateSpeech(text, {
+      voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel - natural female voice
+      stability: 0.5,
+      similarityBoost: 0.75,
+      style: 0,
+      useSpeakerBoost: true
+    })
+  } catch (error) {
+    console.warn('AI speech generation failed:', error)
+  return null
+}
+}
+
+// AI voice functions are handled by the service
+
+// AI voice service handles all voice generation internally
+
+async function playAudioFromUrl(audioUrl: string) {
+  return new Promise<void>((resolve, reject) => {
+    const audio = new Audio(audioUrl)
+    currentAudio.value = audio
+    
+    audio.volume = isMuted.value ? 0 : speechVolume.value
+    audio.playbackRate = speechRate.value
+    
+    audio.onloadstart = () => {
+      isSpeaking.value = true
+      isPaused.value = false
+    }
+    
+    audio.onended = () => {
+      isSpeaking.value = false
+      isPaused.value = false
+      currentAudio.value = null
+      URL.revokeObjectURL(audioUrl) // Clean up
+      resolve()
+    }
+    
+    audio.onerror = (error) => {
+      isSpeaking.value = false
+      isPaused.value = false
+      currentAudio.value = null
+      URL.revokeObjectURL(audioUrl)
+      reject(error)
+    }
+    
+    audio.play()
+  })
+}
+
+async function playTextInChunks(text: string, noteId?: string) {
+  // Break long text into sentences for better performance
+  const sentences = text.match(/[^\.!?]+[\.!?]+/g) || [text]
+  
+  for (const sentence of sentences) {
+    if (!isSpeaking.value) break // Stop if user stopped playback
+    
+    try {
+      await elevenLabsTTS.speakSmart(sentence.trim(), noteId, {
+        voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel - natural female voice
+        stability: 0.5,
+        similarityBoost: 0.75,
+        style: 0,
+        useSpeakerBoost: true
+      })
+    } catch (error) {
+      console.warn('Chunk playback failed:', error)
+    }
+  }
+}
+
+function pauseAIVoice() {
+  elevenLabsTTS.pause()
+    isPaused.value = true
+  isSpeaking.value = true
+}
+
+function resumeAIVoice() {
+  elevenLabsTTS.resume()
+    isPaused.value = false
+  isSpeaking.value = true
+}
+
+function stopAIVoice() {
+  elevenLabsTTS.stop()
+  isSpeaking.value = false
+  isPaused.value = false
+  isLoadingAudio.value = false
+}
+
+async function playSelectedArticle() {
+  if (!selectedArticle.value) return
+  
+  // Use article ID for smart caching
+  const noteId = selectedArticle.value.id?.toString()
+  
+  // Create comprehensive text for storytelling
+  let textToSpeak = `${selectedArticle.value.title}.`
+  
+  // Add content if available, otherwise use snippet
+  if (selectedArticle.value.content) {
+    // Remove HTML tags and clean up the content
+    const cleanContent = selectedArticle.value.content
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/\n\s*\n/g, '\n\n') // Normalize line breaks
+      .replace(/&nbsp;/g, ' ') // Replace non-breaking spaces
+      .replace(/&[a-zA-Z]+;/g, '') // Remove other HTML entities
+      .trim()
+    textToSpeak += ` ${cleanContent}`
+  } else if (selectedArticle.value.snippet) {
+    textToSpeak += ` ${selectedArticle.value.snippet}`
+  }
+  
+  // Enhanced text processing for natural storytelling
+  textToSpeak = processTextForSpeech(textToSpeak)
+  
+  // Try AI voice first with smart caching, fallback to browser voice
+  if (useAIVoice.value) {
+    await startAIVoice(textToSpeak, noteId)
+  } else {
+    startSpeech(textToSpeak)
+  }
+}
+
+function processTextForSpeech(text: string): string {
+  return text
+    // Add natural pauses after sentences
+    .replace(/\. /g, '.   ')
+    .replace(/\? /g, '?   ')
+    .replace(/! /g, '!   ')
+    
+    // Add breathing pauses after paragraphs
+    .replace(/\n\n/g, '.     ')
+    
+    // Handle common abbreviations to sound more natural
+    .replace(/\bDr\./g, 'Doctor')
+    .replace(/\bMr\./g, 'Mister')
+    .replace(/\bMs\./g, 'Mizz')
+    .replace(/\bMrs\./g, 'Missus')
+    .replace(/\bprof\./gi, 'Professor')
+    .replace(/\betc\./gi, 'etcetera')
+    .replace(/\bi\.e\./gi, 'that is')
+    .replace(/\be\.g\./gi, 'for example')
+    
+    // Handle numbers and dates more naturally
+    .replace(/(\d{4})/g, (match) => {
+      const year = parseInt(match)
+      if (year > 1900 && year < 2100) {
+        return match // Keep years as is for natural pronunciation
+      }
+      return match
+    })
+    
+    // Add emphasis pauses before important words
+    .replace(/\b(however|therefore|moreover|furthermore|nevertheless|consequently)\b/gi, '   $1')
+    
+    // Handle quotations more naturally
+    .replace(/"/g, '') // Remove quotation marks as they don't add to speech
+    
+    // Clean up multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+onMounted(() => {
+  loadNotesFromBackend()
+})
+
+onUnmounted(() => {
+  // Cleanup fullscreen state when component is destroyed
+  if (isNotesFullscreen.value) {
+    document.body.style.overflow = ''
+    document.body.classList.remove('notes-fullscreen')
+    document.removeEventListener('keydown', handleNotesEscapeKey)
+  }
+  
+  // Stop any ongoing speech and cleanup audio
+  stopSpeech()
+  if (currentAudio.value) {
+    currentAudio.value.pause()
+    currentAudio.value = null
+  }
+})
 </script>
 
 <style>
@@ -570,6 +1097,426 @@ function handleNotesUpdated() {
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid #e5e5e7;
+  transition: all 0.3s ease;
+}
+
+/* Fullscreen Mode */
+.apple-notes-container.fullscreen {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 10000 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  background: #ffffff !important;
+}
+
+.fullscreen-btn {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-radius: 6px !important;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.15s ease !important;
+  opacity: 0.7;
+}
+
+.fullscreen-btn:hover {
+  background: hsl(var(--muted)/0.8) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  opacity: 1;
+  transform: none;
+}
+
+.fullscreen-btn:active {
+  background: hsl(var(--muted)) !important;
+  transform: scale(0.95);
+}
+
+/* Dark mode support for fullscreen button */
+@media (prefers-color-scheme: dark) {
+  .fullscreen-btn {
+    color: #8e8e93 !important;
+  }
+  
+  .fullscreen-btn:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+  }
+  
+  .fullscreen-btn:active {
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+}
+
+/* Audio Player Styles */
+.audio-player {
+  margin-top: 20px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.audio-btn {
+  background: hsl(var(--muted)/0.5) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border-radius: 8px !important;
+  height: 36px !important;
+  padding: 0 12px !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.audio-btn:hover {
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.play-btn {
+  background: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+  border-color: hsl(var(--primary)) !important;
+}
+
+.play-btn:hover {
+  background: hsl(var(--primary)/0.9) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+.stop-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+  color: white !important;
+  border: 2px solid rgba(239, 68, 68, 0.3) !important;
+  transition: all 0.2s ease;
+}
+
+.stop-btn:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.audio-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+.audio-badge.ai-voice {
+  background: linear-gradient(45deg, #4285f4, #34a853, #ea4335, #fbbc05);
+  background-size: 200% 200%;
+  animation: gemini-gradient 3s ease infinite;
+  color: white;
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.4);
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.audio-badge.browser-voice {
+  background: rgba(75, 85, 99, 0.3);
+  color: inherit;
+}
+
+.loading-btn {
+  opacity: 0.7;
+  cursor: not-allowed !important;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid hsl(var(--muted));
+  border-top: 2px solid hsl(var(--primary));
+  border-radius: 50%;
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes gemini-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.voice-toggle-btn {
+  background: hsl(var(--muted)/0.5) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  min-width: 60px !important;
+  transition: all 0.2s ease !important;
+}
+
+.voice-toggle-btn:hover {
+  background: linear-gradient(45deg, #4285f4, #34a853, #ea4335, #fbbc05) !important;
+  background-size: 200% 200%;
+  animation: gemini-gradient 2s ease infinite;
+  color: white !important;
+  border-color: transparent !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(66, 133, 244, 0.4);
+}
+
+.speed-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 12px;
+  padding: 8px;
+  background: hsl(var(--muted)/0.3);
+  border-radius: 8px;
+  border: 1px solid hsl(var(--border));
+}
+
+.speed-label, .speed-value {
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+  min-width: fit-content;
+}
+
+.speed-slider {
+  width: 80px;
+  height: 4px;
+  background: hsl(var(--muted));
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.speed-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: hsl(var(--primary));
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.speed-slider::-webkit-slider-thumb:hover {
+  background: hsl(var(--primary)/0.8);
+  transform: scale(1.1);
+}
+
+.speed-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: hsl(var(--primary));
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+}
+
+.speed-slider::-moz-range-thumb:hover {
+  background: hsl(var(--primary)/0.8);
+  transform: scale(1.1);
+}
+
+.audio-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.audio-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-text {
+  font-size: 0.875rem;
+  color: hsl(var(--muted-foreground));
+  font-weight: 500;
+}
+
+.audio-waves {
+  display: flex;
+  align-items: end;
+  gap: 2px;
+  height: 16px;
+}
+
+.audio-waves span {
+  width: 3px;
+  background: hsl(var(--primary));
+  border-radius: 2px;
+  animation: audio-wave 1.4s ease-in-out infinite;
+}
+
+.audio-waves span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.audio-waves span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes audio-wave {
+  0%, 40%, 100% {
+    height: 4px;
+    opacity: 0.6;
+  }
+  20% {
+    height: 16px;
+    opacity: 1;
+  }
+}
+
+/* Dark mode support for audio player */
+@media (prefers-color-scheme: dark) {
+  .audio-player {
+    border-top-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .audio-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
+  }
+  
+  .audio-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .status-text {
+    color: #8e8e93;
+  }
+  
+  .audio-badge {
+    background: rgba(0, 0, 0, 0.3);
+    color: inherit;
+  }
+  
+  .speed-control {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+  
+  .speed-slider {
+    background: rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Mobile responsive audio player */
+@media (max-width: 768px) {
+  .audio-player {
+    margin-top: 16px;
+    padding: 12px 0;
+  }
+  
+  .audio-controls {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  
+  .audio-btn {
+    height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 0.8rem !important;
+  }
+  
+  .audio-btn .h-4 {
+    width: 14px !important;
+    height: 14px !important;
+  }
+  
+  .audio-badge {
+    font-size: 0.6rem !important;
+    padding: 1px 4px !important;
+    margin-left: 4px !important;
+  }
+  
+  .voice-toggle-btn {
+    font-size: 0.7rem !important;
+    min-width: 50px !important;
+    padding: 0 6px !important;
+  }
+  
+  .loading-btn {
+    font-size: 0.7rem !important;
+  }
+  
+  .loading-spinner {
+    width: 12px !important;
+    height: 12px !important;
+    margin-right: 6px !important;
+  }
+  
+  .speed-control {
+    margin-left: 0 !important;
+    margin-top: 8px !important;
+    width: 100% !important;
+    padding: 6px !important;
+  }
+  
+  .speed-slider {
+    flex: 1 !important;
+    width: auto !important;
+  }
+  
+  .audio-status {
+    margin-top: 8px;
+  }
+  
+  .status-text {
+    font-size: 0.8rem;
+  }
+}
+
+/* Fade-in animation for audio controls */
+.audio-player {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .notes-sidebar {
@@ -1232,5 +2179,31 @@ function handleNotesUpdated() {
     flex-direction: column;
     text-align: center;
   }
+}
+</style>
+
+<style>
+/* Global styles for notes fullscreen mode */
+body.notes-fullscreen {
+  overflow: hidden !important;
+}
+
+/* Hide ALL other elements when in fullscreen */
+body.notes-fullscreen > *:not(#app) {
+  display: none !important;
+}
+
+body.notes-fullscreen header,
+body.notes-fullscreen nav,
+body.notes-fullscreen footer,
+body.notes-fullscreen .chatbot,
+body.notes-fullscreen section:not(#skills) {
+  display: none !important;
+}
+
+/* Hide everything in skills section except notes */
+body.notes-fullscreen #skills .section-header,
+body.notes-fullscreen #skills .experience-section {
+  display: none !important;
 }
 </style>
