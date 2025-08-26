@@ -813,8 +813,9 @@ async function loadPublicArtworks() {
 async function loadExistingArtwork(artworkId?: string) {
   if (!artworkId) {
     // Prompt user for artwork ID
-    artworkId = prompt('Enter artwork ID to collaborate on:')
-    if (!artworkId) return
+    const promptResult = prompt('Enter artwork ID to collaborate on:')
+    if (!promptResult) return
+    artworkId = promptResult
   }
   
   try {

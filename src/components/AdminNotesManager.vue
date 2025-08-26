@@ -146,7 +146,7 @@
             <div class="note-card-meta">
               <span class="note-meta-item">{{ note.category }}</span>
               <span class="note-meta-item">{{ note.read_time }}min read</span>
-              <span class="note-meta-item">{{ formatDate(note.created_at) }}</span>
+              <span class="note-meta-item">{{ note.created_at ? formatDate(note.created_at) : 'Unknown date' }}</span>
             </div>
             
             <div class="note-card-tags">
@@ -158,7 +158,7 @@
                 {{ tag }}
               </span>
               <span 
-                v-if="note.tags?.length > 3"
+                v-if="note.tags && note.tags.length > 3"
                 class="note-tag-more"
               >
                 +{{ note.tags.length - 3 }}
@@ -172,7 +172,7 @@
               Edit
             </Button>
             <Button 
-              @click="deleteNote(note.id)" 
+              @click="note.id && deleteNote(note.id)" 
               variant="ghost" 
               size="sm"
               class="delete-btn"
@@ -231,7 +231,7 @@ const formData = ref({
   content: '',
   category: '',
   tagsText: '',
-  readTime: 5,
+  readTime: '5',
   isPublished: true
 })
 
@@ -285,7 +285,7 @@ async function saveNote() {
       content: formData.value.content.trim(),
       category: formData.value.category,
       tags: tags,
-      read_time: formData.value.readTime,
+      read_time: parseInt(formData.value.readTime) || 1,
       is_published: formData.value.isPublished
     }
     
@@ -353,7 +353,7 @@ function editNote(note: Note) {
     content: note.content,
     category: note.category,
     tagsText: note.tags?.join(', ') || '',
-    readTime: note.read_time,
+    readTime: note.read_time.toString(),
     isPublished: note.is_published
   }
 }
@@ -365,7 +365,7 @@ function closeForm() {
     content: '',
     category: '',
     tagsText: '',
-    readTime: 5,
+    readTime: '5',
     isPublished: true
   }
   emit('closeAddForm')

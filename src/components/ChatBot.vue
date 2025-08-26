@@ -61,7 +61,7 @@
           </div>
           <div class="message-content">
             <div class="message-text">{{ message.text }}</div>
-            <time class="message-time" :datetime="message.timestamp">{{ message.time }}</time>
+            <time class="message-time" :datetime="message.time">{{ message.time }}</time>
           </div>
           <div 
             class="message-avatar" 

@@ -212,7 +212,8 @@ onMounted(async () => {
   const cards = gsap.utils.toArray(".card")
 
   cardsWrappers.forEach((wrapper, i) => {
-    const card = cards[i]
+    const card = cards[i] as HTMLElement
+    const wrapperElement = wrapper as HTMLElement
     let scale = 1, rotation = 0
     
     if (i !== cards.length - 1) {
@@ -226,12 +227,12 @@ onMounted(async () => {
       transformOrigin: "top center",
       ease: "none",
       scrollTrigger: {
-        trigger: wrapper,
+        trigger: wrapperElement,
         start: "top " + (60 + 10 * i),
         end: "bottom 550",
         endTrigger: ".wrapper",
         scrub: true,
-        pin: wrapper,
+        pin: wrapperElement,
         pinSpacing: false,
         // markers: {
         //   indent: 100 * i,
@@ -239,7 +240,7 @@ onMounted(async () => {
         //   endColor: "#fec5fb",
         //   fontSize: "14px"
         // },
-        id: i + 1
+        id: (i + 1).toString()
       }
     })
   })
