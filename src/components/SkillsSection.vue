@@ -1100,7 +1100,7 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-/* Fullscreen Mode */
+/* Responsive Fullscreen Mode */
 .apple-notes-container.fullscreen {
   position: fixed !important;
   top: 0 !important;
@@ -1108,13 +1108,43 @@ onUnmounted(() => {
   right: 0 !important;
   bottom: 0 !important;
   width: 100vw !important;
-  height: 100vh !important;
+  height: 100dvh !important; /* Dynamic viewport height - better for mobile */
+  min-height: 100vh !important; /* Fallback for browsers without dvh support */
+  max-height: 100vh !important; /* Prevent overflow above screen */
   z-index: 10000 !important;
   margin: 0 !important;
+  padding: 0 !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   border: none !important;
   background: #ffffff !important;
+  overflow: hidden !important; /* Prevent any content overflow */
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .apple-notes-container.fullscreen {
+    height: 100svh !important; /* Small viewport height for iOS Safari */
+  }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .apple-notes-container.fullscreen {
+    /* Use smaller viewport unit on mobile to avoid browser UI issues */
+    height: 100svh !important;
+    min-height: -webkit-fill-available !important;
+  }
+}
+
+/* Ensure content inside fullscreen container is properly constrained */
+.apple-notes-container.fullscreen .notes-content,
+.apple-notes-container.fullscreen .notes-sidebar,
+.apple-notes-container.fullscreen .article-content {
+  height: 100% !important;
+  max-height: 100% !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
 }
 
 .fullscreen-btn {
@@ -1995,28 +2025,379 @@ onUnmounted(() => {
   }
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
+/* Comprehensive Responsive Design */
+
+/* Extra Small Devices (phones, 480px and down) */
+@media (max-width: 480px) {
+  .skills-section {
+    padding: 1rem 0.5rem;
+  }
+  
+  .section-header {
+    padding: 0 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.75rem;
+    text-align: center;
+  }
+  
   .apple-notes-container {
     flex-direction: column;
-    height: auto;
+    height: 70vh;
+    min-height: 500px;
+    margin: 0.5rem 0;
+    border-radius: 8px;
   }
   
   .notes-sidebar {
     width: 100%;
-    max-height: 300px;
+    height: 180px;
+    max-height: 180px;
+    border-right: none;
+    border-bottom: 1px solid #d1d5db;
+    overflow-y: auto;
+  }
+  
+  .notes-header {
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+  
+  .article-panel {
+    height: calc(70vh - 180px);
+    min-height: 320px;
   }
   
   .article-view {
-    padding: 24px 20px;
+    padding: 0.75rem;
   }
   
   .article-title {
-    font-size: 24px;
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
   }
   
   .article-meta {
-    gap: 12px;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+  }
+  
+  .article-content {
+    font-size: 0.875rem;
+    line-height: 1.6;
+  }
+  
+  .fullscreen-btn {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  /* Article list items */
+  .article-list-item {
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Experience section */
+  .experience-section {
+    padding: 1rem 0.5rem;
+  }
+  
+  .experience-item {
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .experience-item h3 {
+    font-size: 1rem;
+  }
+  
+  .experience-item p {
+    font-size: 0.875rem;
+  }
+}
+
+/* Small Devices (tablets, 481px to 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  .skills-section {
+    padding: 1.5rem 1rem;
+  }
+  
+  .section-header h2 {
+    font-size: 2rem;
+  }
+  
+  .apple-notes-container {
+    flex-direction: column;
+    height: 75vh;
+    min-height: 600px;
+    margin: 1rem 0;
+  }
+  
+  .notes-sidebar {
+    width: 100%;
+    height: 220px;
+    max-height: 220px;
+    border-right: none;
+    border-bottom: 1px solid #d1d5db;
+  }
+  
+  .article-panel {
+    height: calc(75vh - 220px);
+    min-height: 380px;
+  }
+  
+  .article-view {
+    padding: 1rem 1.25rem;
+  }
+  
+  .article-title {
+    font-size: 1.5rem;
+  }
+  
+  .article-meta {
+    gap: 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .article-content {
+    font-size: 0.9375rem;
+    line-height: 1.65;
+  }
+  
+  .experience-section {
+    padding: 1.5rem 1rem;
+  }
+  
+  .experience-item {
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+  }
+}
+
+/* Medium Devices (tablets/small laptops, 769px to 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .skills-section {
+    padding: 2rem 1.5rem;
+  }
+  
+  .section-header h2 {
+    font-size: 2.25rem;
+  }
+  
+  .apple-notes-container {
+    flex-direction: row;
+    height: 80vh;
+    min-height: 700px;
+  }
+  
+  .notes-sidebar {
+    width: 280px;
+    max-height: none;
+    height: 100%;
+    border-right: 1px solid #d1d5db;
+    border-bottom: none;
+  }
+  
+  .article-panel {
+    flex: 1;
+    height: 100%;
+  }
+  
+  .article-view {
+    padding: 1.5rem 2rem;
+  }
+  
+  .article-title {
+    font-size: 1.75rem;
+  }
+  
+  .article-meta {
+    gap: 1rem;
+  }
+  
+  .article-content {
+    font-size: 1rem;
+    line-height: 1.7;
+  }
+  
+  .experience-section {
+    padding: 2rem 1.5rem;
+  }
+  
+  .content-section {
+    padding: 1.5rem;
+  }
+  
+  .content-hero h1 {
+    font-size: 2rem;
+  }
+  
+  .content-hero p {
+    font-size: 1rem;
+  }
+}
+
+/* Large Devices (desktops, 1025px to 1440px) */
+@media (min-width: 1025px) and (max-width: 1440px) {
+  .skills-section {
+    padding: 2.5rem 2rem;
+  }
+  
+  .section-header h2 {
+    font-size: 2.5rem;
+  }
+  
+  .apple-notes-container {
+    height: 85vh;
+    min-height: 800px;
+  }
+  
+  .notes-sidebar {
+    width: 320px;
+  }
+  
+  .article-view {
+    padding: 2rem 2.5rem;
+  }
+  
+  .article-title {
+    font-size: 2rem;
+  }
+  
+  .article-content {
+    font-size: 1.0625rem;
+    line-height: 1.75;
+  }
+  
+  .experience-section {
+    padding: 2.5rem 2rem;
+  }
+  
+  .content-section {
+    padding: 2rem;
+  }
+  
+  .content-hero h1 {
+    font-size: 2.25rem;
+  }
+}
+
+/* Extra Large Devices (large desktops, 1441px and up) */
+@media (min-width: 1441px) {
+  .skills-section {
+    padding: 3rem 2.5rem;
+  }
+  
+  .section-header h2 {
+    font-size: 2.75rem;
+  }
+  
+  .apple-notes-container {
+    height: 90vh;
+    min-height: 900px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  
+  .notes-sidebar {
+    width: 350px;
+  }
+  
+  .article-view {
+    padding: 2.5rem 3rem;
+  }
+  
+  .article-title {
+    font-size: 2.25rem;
+  }
+  
+  .article-content {
+    font-size: 1.125rem;
+    line-height: 1.8;
+    max-width: 800px;
+  }
+  
+  .experience-section {
+    padding: 3rem 2.5rem;
+  }
+  
+  .content-section {
+    padding: 2.5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  
+  .content-hero h1 {
+    font-size: 2.5rem;
+  }
+  
+  .content-hero p {
+    font-size: 1.125rem;
+  }
+}
+
+/* Touch-friendly improvements for mobile */
+@media (max-width: 768px) and (pointer: coarse) {
+  .article-list-item {
+    min-height: 44px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  .fullscreen-btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+  
+  .tab-button {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Larger tap areas for audio controls */
+  .audio-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.5rem 1rem;
+  }
+  
+  .voice-toggle-btn {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Landscape orientation adjustments for phones */
+@media (max-width: 768px) and (orientation: landscape) {
+  .apple-notes-container {
+    height: 85vh;
+    min-height: 400px;
+  }
+  
+  .notes-sidebar {
+    height: 150px;
+    max-height: 150px;
+  }
+  
+  .article-panel {
+    height: calc(85vh - 150px);
+    min-height: 250px;
+  }
+  
+  .skills-section {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .section-header {
+    margin-bottom: 1rem;
+  }
+  
+  .section-header h2 {
+    font-size: 1.5rem;
   }
 }
 
@@ -2183,9 +2564,24 @@ onUnmounted(() => {
 </style>
 
 <style>
-/* Global styles for notes fullscreen mode */
+/* Global styles for responsive notes fullscreen mode */
 body.notes-fullscreen {
   overflow: hidden !important;
+  height: 100% !important;
+  max-height: 100% !important;
+  position: fixed !important; /* Prevent body scrolling */
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Ensure html element also respects viewport constraints */
+html:has(body.notes-fullscreen) {
+  overflow: hidden !important;
+  height: 100% !important;
+  max-height: 100% !important;
 }
 
 /* Hide ALL other elements when in fullscreen */
@@ -2205,5 +2601,22 @@ body.notes-fullscreen section:not(#skills) {
 body.notes-fullscreen #skills .section-header,
 body.notes-fullscreen #skills .experience-section {
   display: none !important;
+}
+
+/* Mobile-specific fullscreen optimizations */
+@media (max-width: 768px) {
+  body.notes-fullscreen {
+    /* Prevent iOS Safari viewport issues */
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Prevent scrolling and bouncing on iOS */
+@supports (-webkit-touch-callout: none) {
+  body.notes-fullscreen {
+    -webkit-overflow-scrolling: auto !important;
+    touch-action: none !important;
+  }
 }
 </style>

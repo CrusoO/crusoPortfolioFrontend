@@ -189,10 +189,44 @@ onUnmounted(() => {
   transition: all 0.2s ease;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Comprehensive Responsive Design */
+/* Extra Small Devices (phones, 480px and down) */
+@media (max-width: 480px) {
   .modern-navbar {
-    top: 1rem;
+    top: 0.5rem;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: calc(100% - 1rem);
+    max-width: 350px;
+  }
+  
+  .navbar-pill {
+    padding: 0.25rem;
+    gap: 0;
+    width: 100%;
+    justify-content: space-evenly;
+  }
+  
+  .nav-item {
+    padding: 0.4rem 0.5rem;
+    font-size: 0.7rem;
+    min-width: auto;
+    flex: 1;
+    text-align: center;
+  }
+  
+  .nav-label {
+    display: none; /* Hide text labels on very small screens */
+  }
+}
+
+/* Small Devices (tablets, 481px to 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  .modern-navbar {
+    top: 0.75rem;
+    width: calc(100% - 2rem);
+    max-width: 500px;
   }
   
   .navbar-pill {
@@ -203,14 +237,95 @@ onUnmounted(() => {
   .nav-item {
     padding: 0.625rem 0.75rem;
     font-size: 0.8125rem;
+    flex: 1;
+    text-align: center;
   }
-  
-
 }
 
-@media (max-width: 480px) {
+/* Medium Devices (tablets/small laptops, 769px to 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .modern-navbar {
+    top: 1rem;
+    width: auto;
+    max-width: 600px;
+  }
+  
+  .navbar-pill {
+    padding: 0.5rem;
+    gap: 0.25rem;
+  }
+  
   .nav-item {
-    padding: 0.5rem 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Large Devices (desktops, 1025px to 1440px) */
+@media (min-width: 1025px) and (max-width: 1440px) {
+  .modern-navbar {
+    top: 1.25rem;
+    max-width: 700px;
+  }
+  
+  .navbar-pill {
+    padding: 0.625rem;
+    gap: 0.375rem;
+  }
+  
+  .nav-item {
+    padding: 0.875rem 1.25rem;
+    font-size: 0.9375rem;
+  }
+}
+
+/* Extra Large Devices (large desktops, 1441px and up) */
+@media (min-width: 1441px) {
+  .modern-navbar {
+    top: 1.5rem;
+    max-width: 800px;
+  }
+  
+  .navbar-pill {
+    padding: 0.75rem;
+    gap: 0.5rem;
+  }
+  
+  .nav-item {
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+  }
+}
+
+/* Touch-friendly improvements for mobile */
+@media (max-width: 768px) and (pointer: coarse) {
+  .nav-item {
+    min-height: 44px; /* Apple's recommended touch target size */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  /* Larger tap areas */
+  .nav-item::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    bottom: -8px;
+    left: -8px;
+    right: -8px;
+  }
+}
+
+/* Landscape orientation adjustments for phones */
+@media (max-width: 768px) and (orientation: landscape) {
+  .modern-navbar {
+    top: 0.25rem;
+    transform: translateX(-50%) scale(0.9);
+  }
+  
+  .nav-item {
+    padding: 0.375rem 0.625rem;
     font-size: 0.75rem;
   }
 }
