@@ -2,9 +2,9 @@
   <div class="tooltip-root">
     <div 
       class="tooltip-trigger"
-      @mouseenter="(event: MouseEvent) => show(event)"
+      @mouseenter="handleMouseEnter"
       @mouseleave="hide"
-      @focus="(event: FocusEvent) => show(event)"
+      @focus="handleFocus"
       @blur="hide"
     >
       <slot />
@@ -93,7 +93,7 @@ const tooltipStyle = computed(() => {
   return style
 })
 
-async function show(event: MouseEvent | FocusEvent) {
+function show(event: MouseEvent | FocusEvent) {
   if (timeoutId) clearTimeout(timeoutId)
   
   const target = event.currentTarget as HTMLElement
@@ -103,6 +103,14 @@ async function show(event: MouseEvent | FocusEvent) {
     isVisible.value = true
     await nextTick()
   }, props.delay)
+}
+
+function handleMouseEnter(event: MouseEvent) {
+  show(event)
+}
+
+function handleFocus(event: FocusEvent) {
+  show(event)
 }
 
 function hide() {
