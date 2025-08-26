@@ -12,131 +12,57 @@
           Recent Work
       </div>
 
+
+
         <h2 id="projects-heading" class="section-title">
           Featured <span style="color: hsl(var(--primary))">Projects</span>
         </h2>
       </header>
 
-            <!-- GSAP ScrollTrigger Cards Animation - Exact Demo Structure -->
-      <div class="spacer"></div>
-      <div class="wrapper">
-        <div class="cards">
-          <div class="card-wrapper">
-            <div class="card one">
-              <!-- Card Content -->
-              <div class="card-content-overlay">
-                <!-- Card Header with Icon -->
-                <div class="card-icon-section">
-                  <component :is="projects[0].icon" class="project-icon-new" />
+      <!-- Projects Grid -->
+      <div class="projects-grid">
+        <div 
+          v-for="project in projects" 
+          :key="project.id"
+          class="project-card"
+        >
+          <div class="card-header">
+            <component :is="project.icon" class="card-icon" />
+            <div class="card-stats">
+              <Heart 
+                class="heart-icon" 
+                :class="{ 'heart-filled': project.liked }" 
+                @click="toggleLike(project.id)"
+              />
+              <span class="like-count">{{ project.likes }}</span>
+            </div>
                 </div>
 
-                <!-- Card Content -->
-                <div class="card-content-section">
-                  <h3 class="project-title-new">{{ projects[0].title }}</h3>
-                  <p class="project-description-new">{{ projects[0].description }}</p>
+          <div class="card-content">
+            <h3 class="card-title">{{ project.title }}</h3>
+            <p class="card-description">{{ project.description }}</p>
                 </div>
                 
-                <!-- Like/Heart Section -->
-                <div class="card-stats-section">
-                  <div class="heart-section">
-                    <Heart class="heart-icon" :class="{ 'heart-filled': projects[0].liked }" />
-                    <span class="like-count">{{ projects[0].likes }}</span>
-                  </div>
-                </div>
-
-                <!-- Tags Section -->
-                <div class="card-tags-section">
+          <div class="card-tags">
                   <span 
-                    v-for="tag in projects[0].tags"
+              v-for="tag in project.tags"
                     :key="tag"
-                    class="project-tag-new"
+              class="tag"
                   >
                     {{ tag }}
                   </span>
                 </div>
-              </div>
-            </div>
-          </div>
-          <div class="card-wrapper">
-            <div class="card two">
-              <!-- Card Content -->
-              <div class="card-content-overlay">
-                <!-- Card Header with Icon -->
-                <div class="card-icon-section">
-                  <component :is="projects[1].icon" class="project-icon-new" />
-                </div>
-
-                <!-- Card Content -->
-                <div class="card-content-section">
-                  <h3 class="project-title-new">{{ projects[1].title }}</h3>
-                  <p class="project-description-new">{{ projects[1].description }}</p>
-                </div>
-                
-                <!-- Like/Heart Section -->
-                <div class="card-stats-section">
-                  <div class="heart-section">
-                    <Heart class="heart-icon" :class="{ 'heart-filled': projects[1].liked }" />
-                    <span class="like-count">{{ projects[1].likes }}</span>
-                  </div>
-                </div>
-
-                <!-- Tags Section -->
-                <div class="card-tags-section">
-                  <span 
-                    v-for="tag in projects[1].tags"
-                    :key="tag"
-                    class="project-tag-new"
-                  >
-                    {{ tag }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="card-wrapper">
-            <div class="card three">
-              <!-- Card Content -->
-              <div class="card-content-overlay">
-                <!-- Card Header with Icon -->
-                <div class="card-icon-section">
-                  <component :is="projects[2].icon" class="project-icon-new" />
-                </div>
-
-                <!-- Card Content -->
-                <div class="card-content-section">
-                  <h3 class="project-title-new">{{ projects[2].title }}</h3>
-                  <p class="project-description-new">{{ projects[2].description }}</p>
-                </div>
-                
-                <!-- Like/Heart Section -->
-                <div class="card-stats-section">
-                  <div class="heart-section">
-                    <Heart class="heart-icon" :class="{ 'heart-filled': projects[2].liked }" />
-                    <span class="like-count">{{ projects[2].likes }}</span>
-                  </div>
-                </div>
-
-                <!-- Tags Section -->
-                <div class="card-tags-section">
-                  <span 
-                    v-for="tag in projects[2].tags"
-                    :key="tag"
-                    class="project-tag-new"
-                  >
-                    {{ tag }}
-                  </span>
-                </div>
-              </div>
-            </div>
+          
+          <div class="card-actions">
+            <Button 
+              variant="outline" 
+              class="w-full"
+              @click="viewProject(project.id)"
+            >
+              View Project
+            </Button>
           </div>
         </div>
-      </div>
-      <div class="spacer"></div>
-
-      <div class="text-center mt-8 sm:mt-12">
-        <Button variant="outline" size="lg" class="view-all-btn">
-          View All Projects
-        </Button>
       </div>
     </div>
   </section>
@@ -144,21 +70,14 @@
 
 <script setup lang="ts">
 /*
-  Modern projects section with GSAP ScrollTrigger card animation
-  Features stacked card effect with scaling and rotation on scroll
+  Modern projects section with clean shadcn-style card design
+  Features responsive grid layout and interactive elements
 */
 
-import { onMounted, onUnmounted, nextTick } from 'vue'
+import { ref } from 'vue'
 import type { Component } from 'vue'
 import { Code, Globe, Palette, Zap, Heart } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
-
-// Import GSAP and ScrollTrigger with proper typing
-import gsap from 'gsap'
-import ScrollTrigger from 'gsap/ScrollTrigger'
-
-// Register ScrollTrigger plugin
-gsap.registerPlugin(ScrollTrigger)
 
 // Project interface for type safety
 interface Project {
@@ -171,25 +90,25 @@ interface Project {
   tags: string[]
 }
 
-// Projects data with proper typing
-const projects: Project[] = [
+// Project data with enhanced descriptions
+const projects = ref<Project[]>([
   {
     id: 1,
     title: 'CodeSensei',
-    description: 'Video Generator Engine that transforms applications into interactive visuals',
+    description: 'AI-powered code analysis tool that transforms applications into interactive learning platforms',
     icon: Zap,
-    likes: 3022,
+    likes: 2847,
     liked: true,
-    tags: ['AI-powered', 'Education', 'Video Gen']
+    tags: ['AI/ML', 'Education', 'React']
   },
   {
     id: 2,
-    title: 'AGRO Frontend',
-    description: 'Modern agricultural management system with advanced analytics',
+    title: 'AGRO',
+    description: 'Modern agricultural management system with advanced analytics and real-time monitoring',
     icon: Globe,
-    likes: 2849,
-    liked: true,
-    tags: ['Agriculture', 'Analytics', 'Vue.js']
+    likes: 1239,
+    liked: false,
+    tags: ['Agriculture', 'Analytics', 'React.js']
   },
   {
     id: 3,
@@ -200,215 +119,127 @@ const projects: Project[] = [
     liked: false,
     tags: ['Portfolio', 'Interactive', 'Vue.js']
   }
-] as const
+])
 
-// Exact original demo implementation from GSAP community
-onMounted(async () => {
-  await nextTick()
-  
-  console.clear()
-  
-  const cardsWrappers = gsap.utils.toArray(".card-wrapper")
-  const cards = gsap.utils.toArray(".card")
+// Toggle like functionality
+function toggleLike(projectId: number) {
+  const project = projects.value.find(p => p.id === projectId)
+  if (project) {
+    project.liked = !project.liked
+    project.likes += project.liked ? 1 : -1
+  }
+}
 
-  cardsWrappers.forEach((wrapper, i) => {
-    const card = cards[i] as HTMLElement
-    const wrapperElement = wrapper as HTMLElement
-    let scale = 1, rotation = 0
-    
-    if (i !== cards.length - 1) {
-      scale = 0.9 + 0.025 * i
-      rotation = -10
-    }
-    
-    gsap.to(card, {
-      scale: scale,
-      rotationX: rotation,
-      transformOrigin: "top center",
-      ease: "none",
-      scrollTrigger: {
-        trigger: wrapperElement,
-        start: "top " + (60 + 10 * i),
-        end: "bottom 550",
-        endTrigger: ".wrapper",
-        scrub: true,
-        pin: wrapperElement,
-        pinSpacing: false,
-        // markers: {
-        //   indent: 100 * i,
-        //   startColor: "#0ae448",
-        //   endColor: "#fec5fb",
-        //   fontSize: "14px"
-        // },
-        id: (i + 1).toString()
-      }
-    })
-  })
-})
-
-onUnmounted(() => {
-  // Clean up ScrollTrigger instances
-  ScrollTrigger.getAll().forEach(trigger => trigger.kill())
-})
+// View project functionality
+function viewProject(projectId: number) {
+  console.log(`Viewing project ${projectId}`)
+  // Add your project viewing logic here
+}
 </script>
 
 <style scoped>
-/* Modern Projects Section with Global Cream Text Color */
+/* Projects Section Styling */
 .modern-projects-section {
-  background: #000000;
-  min-height: 100vh;
-  padding: 2rem 2rem; /* Reduced top/bottom padding */
-  color: rgb(255, 252, 225); /* Global cream text color */
-}
-
-.modern-projects-section .section-title,
-.modern-projects-section .section-description {
-  color: rgb(255, 252, 225); /* Cream color for headings */
-}
-
-.modern-projects-section .section-badge {
-  background: rgba(255, 252, 225, 0.1); /* Cream tint background */
-  color: rgb(255, 252, 225); /* Cream text */
-  border: 1px solid rgba(255, 252, 225, 0.2); /* Cream border */
-}
-
-/* Exact original demo styles - from GSAP community forums */
-* {
-  box-sizing: border-box;
-}
-
-.spacer {
-  width: 100%;
-  min-height: 2rem; /* Reduced from 100vh to 2rem */
-}
-
-.wrapper {
-  width: 100%;
-  min-height: 100vh;
-  padding-top: 20px; /* Reduced from 100px */
-  padding-bottom: 20px; /* Reduced from 50px */
-}
-
-.card-wrapper {
-  width: 100%;
-  perspective: 500px;
-  margin-bottom: 50px;
-}
-
-.card-wrapper:last-child {
-  margin-bottom: 0;
-}
-
-.cards {
-  width: 100%;
-  max-width: 750px;
-  margin: 0 auto;
-  padding: 0 20px;
-}
-
-.card {
-  width: 100%;
-  height: 400px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 10px;
+  padding: 5rem 0;
+  background: hsl(var(--background));
   position: relative;
-  /* Original demo background style */
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: top center;
 }
 
-/* Card-specific styles matching demo structure */
-.card.one {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d30 50%, #000000 100%);
-  border: 3px solid #404040;
+.portfolio-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
 }
 
-.card.two {
-  background: linear-gradient(135deg, #0f0f0f 0%, #1c1c1c 50%, #090909 100%);
-  border: 3px solid #333333;
+/* Section Header */
+.section-header {
+  text-align: center;
+  margin-bottom: 4rem;
 }
 
-.card.three {
-  background: linear-gradient(135deg, #161616 0%, #252525 50%, #0a0a0a 100%);
-  border: 3px solid #3a3a3a;
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: hsl(var(--primary)/10);
+  border: 1px solid hsl(var(--primary)/20);
+  color: hsl(var(--primary));
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
 }
 
-/* Card Content Overlay */
-.card-content-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+.section-title {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin: 0;
+  line-height: 1.2;
+}
+
+
+
+/* Projects Grid */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+/* Project Cards */
+.project-card {
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 1rem;
   padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(10px);
-  border-radius: 17px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
-.card::before {
+.project-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px hsl(var(--foreground)/10);
+  border-color: hsl(var(--primary)/30);
+}
+
+.project-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-  border-radius: 17px;
-  pointer-events: none;
+  height: 3px;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary)/60));
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-/* Icon Section */
-.card-icon-section {
+.project-card:hover::before {
+  opacity: 1;
+}
+
+/* Card Header */
+.card-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   margin-bottom: 1rem;
 }
 
-.project-icon-new {
-  width: 3rem;
-  height: 3rem;
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 0.75rem;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
+.card-icon {
+  width: 2rem;
+  height: 2rem;
+  color: hsl(var(--primary));
+  padding: 0.5rem;
+  background: hsl(var(--primary)/10);
+  border-radius: 0.5rem;
 }
 
-/* Content Section */
-.card-content-section {
-  flex: 1;
-  margin-bottom: 1.5rem;
-}
-
-.project-title-new {
-  color: rgb(255, 252, 225); /* Cream color for titles */
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin-bottom: 0.75rem;
-  line-height: 1.2;
-}
-
-.project-description-new {
-  color: rgba(255, 252, 225, 0.9); /* Cream with opacity for descriptions */
-  font-size: 0.875rem;
-  line-height: 1.4;
-  margin-bottom: 1rem;
-}
-
-/* Heart/Stats Section */
-.card-stats-section {
-  margin-bottom: 1rem;
-}
-
-.heart-section {
+.card-stats {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -417,13 +248,14 @@ onUnmounted(() => {
 .heart-icon {
   width: 1.25rem;
   height: 1.25rem;
-  color: #ffffff;
-  transition: all 0.2s ease;
+  color: hsl(var(--muted-foreground));
   cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .heart-icon:hover {
-  transform: scale(1.2);
+  color: #ef4444;
+  transform: scale(1.1);
 }
 
 .heart-icon.heart-filled {
@@ -432,126 +264,140 @@ onUnmounted(() => {
 }
 
 .like-count {
-  color: rgb(255, 252, 225); /* Cream color for like count */
-  font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
 }
 
-/* Tags Section */
-.card-tags-section {
+/* Card Content */
+.card-content {
+  margin-bottom: 1.5rem;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+}
+
+.card-description {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+/* Card Tags */
+.card-tags {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-bottom: 1.5rem;
 }
 
-.project-tag-new {
-  background: rgba(255, 252, 225, 0.2); /* Cream tint background */
-  color: rgb(255, 252, 225); /* Cream text for tags */
-  padding: 0.375rem 0.75rem;
-  border-radius: 20px;
+.tag {
+  display: inline-flex;
+  align-items: center;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
   font-size: 0.75rem;
   font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid hsl(var(--border));
   transition: all 0.2s ease;
-  cursor: pointer;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 252, 225, 0.2); /* Cream border */
 }
 
-.project-tag-new:hover {
-  background: rgba(255, 252, 225, 0.3); /* Cream hover background */
-  transform: translateY(-2px);
+.tag:hover {
+  background: hsl(var(--primary)/10);
+  color: hsl(var(--primary));
+  border-color: hsl(var(--primary)/20);
 }
 
-/* View All Button with Cream Color */
-.view-all-btn {
-  background: rgb(255, 252, 225); /* Cream background */
-  color: #000000; /* Dark text for contrast */
-  border: 2px solid rgb(255, 252, 225); /* Cream border */
-  padding: 0.75rem 2rem;
-  border-radius: 12px;
-  font-weight: 600;
+/* Card Actions */
+.card-actions {
+  margin-top: auto;
+}
+
+/* Button Overrides */
+.card-actions .w-full {
+  width: 100%;
   transition: all 0.3s ease;
 }
 
-.view-all-btn:hover {
-  background: transparent;
-  color: rgb(255, 252, 225); /* Cream text on hover */
-  border-color: rgb(255, 252, 225); /* Cream border on hover */
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(255, 252, 225, 0.3); /* Cream shadow */
+.card-actions button:hover {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transform: translateY(-1px);
 }
 
-/* Responsive Design for ScrollTrigger Cards */
-/* Responsive styles matching original demo */
-@media (min-width: 768px) {
-  .cards {
-    width: 80%;
-    padding: 0 30px;
-  }
-}
-
-@media (min-width: 1024px) {
-  .cards {
-    width: 70%;
-    padding: 0 50px;
-  }
-}
-
+/* Responsive Design */
 @media (max-width: 768px) {
-  .modern-projects-section {
-    padding: 2rem 0;
+  .portfolio-container {
+    padding: 0 1rem;
   }
-  
-  .wrapper {
-    padding-top: 50px;
-    padding-bottom: 25px;
+
+  .projects-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
   }
-  
-  .card {
-    height: 350px;
-  }
-  
-  .card-content-overlay {
+
+  .project-card {
     padding: 1.25rem;
   }
   
-  .project-icon-new {
-    width: 2.5rem;
-    height: 2.5rem;
-    padding: 0.5rem;
-  }
-  
-  .project-title-new {
-    font-size: 1.125rem;
-  }
-  
-  .project-description-new {
-    font-size: 0.8125rem;
+  .section-header {
+    margin-bottom: 3rem;
   }
 }
 
 @media (max-width: 480px) {
-  .card {
-    height: 320px;
+  .modern-projects-section {
+    padding: 3rem 0;
   }
-  
-  .card-content-overlay {
-    padding: 1rem;
+
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
-  
-  .project-title-new {
-    font-size: 1rem;
+
+  .card-stats {
+    align-self: flex-end;
   }
-  
-  .project-description-new {
-    font-size: 0.75rem;
-  }
-  
-  .project-tag-new {
-    font-size: 0.675rem;
-    padding: 0.25rem 0.5rem;
+
+
+}
+
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+  .project-card:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
   }
 }
 
-/* GSAP ScrollTrigger handles all animations */
+/* Animation Preferences */
+@media (prefers-reduced-motion: reduce) {
+  .project-card,
+  .heart-icon,
+  .tag,
+  .card-actions button {
+    animation: none !important;
+    transition: none;
+  }
+
+  .project-card:hover {
+    transform: none;
+  }
+}
+
+/* Focus Styles for Accessibility */
+.heart-icon:focus,
+.card-actions button:focus {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}
+
 </style>

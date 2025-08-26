@@ -458,9 +458,9 @@ function scrollToBottom() {
 // Position styling function
 function getPositionStyle() {
   if (showingWelcome.value) {
-    // Top-right position for welcome (slightly to the right)
+    // Lower-right position for welcome (slightly to the right)
     return {
-      top: '150px',
+      top: '200px',
       right: '100px',
       left: 'auto',
       transform: 'none'
@@ -474,9 +474,9 @@ function getPositionStyle() {
       right: 'auto'
     }
   }
-  // Default position (top-right)
+  // Default position (lower right)
   return {
-    top: '10px',
+    top: '120px',
     right: '20px',
     left: 'auto',
     transform: 'none'

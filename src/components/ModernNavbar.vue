@@ -41,7 +41,7 @@ const navItems: NavItem[] = [
     id: 'projects',
     label: 'Projects',
     sectionId: 'projects',
-    scrollOffset: -134  // Custom scroll offset for Projects section
+    scrollOffset: 20  // Custom scroll offset for Projects section
   },
   {
     id: 'articles',
