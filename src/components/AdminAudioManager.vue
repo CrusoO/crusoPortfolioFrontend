@@ -119,7 +119,7 @@
               />
               <div style="color: #6b7280;">
                 <div style="font-size: 2rem; margin-bottom: 8px;">🎤</div>
-                <p>Drop audio file here or <button type="button" @click="$refs.botFileInput?.click()" style="color: #3b82f6; text-decoration: underline; background: none; border: none; cursor: pointer;">browse</button></p>
+                <p>Drop audio file here or <button type="button" @click="triggerBotFileInput" style="color: #3b82f6; text-decoration: underline; background: none; border: none; cursor: pointer;">browse</button></p>
                 <small style="color: #9ca3af;">Supports MP3, WAV, M4A up to 10MB</small>
                 <div v-if="botVoiceForm.file" style="margin-top: 12px; padding: 8px; background: #ecfdf5; border-radius: 6px; color: #059669;">
                   ✅ Selected: {{ botVoiceForm.file.name }}
@@ -570,6 +570,10 @@ function resetUploadForm() {
 }
 
 // Bot voice functions
+function triggerBotFileInput() {
+  botFileInput.value?.click()
+}
+
 function handleBotFileSelect(event: Event) {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
