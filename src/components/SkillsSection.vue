@@ -18,8 +18,104 @@
           <div class="skills-content">
             <!-- Articles Tab Content - Apple Notes Style -->
             <div v-show="activeTab === 'articles'" class="apple-notes-container" :class="{ 'fullscreen': isNotesFullscreen }">
-              <!-- Sidebar -->
-              <div class="notes-sidebar">
+              
+              <!-- Mobile Notes Header (only visible on mobile) -->
+              <div class="mobile-notes-header">
+                <button 
+                  @click="toggleMobileDrawer"
+                  class="mobile-menu-button"
+                  :class="{ 'active': isMobileDrawerOpen }"
+                >
+                  <span class="hamburger-line"></span>
+                  <span class="hamburger-line"></span>
+                  <span class="hamburger-line"></span>
+                </button>
+                
+                <div class="mobile-header-content">
+                  <h1 class="mobile-article-title">{{ selectedArticle?.title || 'My Notes' }}</h1>
+                  <div class="mobile-article-info" v-if="selectedArticle">
+                    <span class="mobile-read-time">{{ selectedArticle.readTime }} min read</span>
+                    <span class="mobile-category" :class="selectedArticle.category">{{ selectedArticle.category }}</span>
+                  </div>
+                </div>
+                
+                <button 
+                  @click="toggleNotesFullscreen" 
+                  class="mobile-fullscreen-btn"
+                  :title="isNotesFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"
+                >
+                  <Minimize class="h-3 w-3" v-if="isNotesFullscreen" />
+                  <Maximize class="h-3 w-3" v-else />
+                </button>
+              </div>
+
+              <!-- Mobile Drawer Overlay -->
+              <div 
+                class="mobile-drawer-overlay" 
+                :class="{ 'show': isMobileDrawerOpen }"
+                @click="closeMobileDrawer"
+              ></div>
+
+              <!-- Mobile Notes Drawer -->
+              <div class="mobile-notes-drawer" :class="{ 'open': isMobileDrawerOpen }">
+                <div class="drawer-header">
+                  <div class="drawer-header-left">
+                    <h2 class="drawer-title">My Notes</h2>
+                    <span class="drawer-count">{{ filteredArticles.length }}</span>
+                  </div>
+                  <button @click="closeMobileDrawer" class="drawer-close-btn">
+                    <span>×</span>
+                  </button>
+                </div>
+
+                <div class="drawer-search">
+                  <Search class="search-icon" />
+                  <input 
+                    v-model="searchQuery" 
+                    type="text" 
+                    placeholder="Search notes..." 
+                    class="drawer-search-input"
+                  />
+                </div>
+
+                <div class="drawer-notes-list">
+                  <!-- Loading state -->
+                  <div v-if="isLoadingNotes" class="drawer-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Loading notes...</p>
+                  </div>
+                  
+                  <!-- Notes list -->
+                  <div 
+                    v-else-if="filteredArticles.length > 0"
+                    v-for="article in filteredArticles" 
+                    :key="article.id"
+                    class="drawer-note-item"
+                    :class="{ active: selectedArticle?.id === article.id }"
+                    @click="selectMobileArticle(article)"
+                  >
+                    <div class="drawer-note-preview">
+                      <h4 class="drawer-note-title">{{ article.title }}</h4>
+                      <p class="drawer-note-snippet">{{ article.snippet }}</p>
+                      <div class="drawer-note-meta">
+                        <span class="drawer-note-date">{{ formatDate(article.createdAt) }}</span>
+                        <span class="drawer-note-tag">{{ article.category }}</span>
+                      </div>
+                    </div>
+                    <div class="drawer-note-arrow">→</div>
+                  </div>
+                  
+                  <!-- Empty state -->
+                  <div v-else class="drawer-empty-state">
+                    <div class="empty-icon">📝</div>
+                    <h3>No notes found</h3>
+                    <p>Try adjusting your search or check back later.</p>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Desktop Notes Sidebar (hidden on mobile) -->
+              <div class="notes-sidebar desktop-sidebar">
                 <div class="notes-header">
                   <div class="notes-header-left">
                     <h3 class="notes-title">My Notes</h3>
@@ -362,9 +458,12 @@ interface Article {
 const activeTab = ref('articles')
 const searchQuery = ref('')
 const selectedArticle = ref<Article | null>(null)
-const isLoadingNotes = ref(true)
+const isLoadingNotes = ref(false)
 const showAdminPanel = ref(false)
 const isNotesFullscreen = ref(false)
+
+// Mobile drawer state
+const isMobileDrawerOpen = ref(false)
 
 // Speech Synthesis state
 const isSpeaking = ref(false)
@@ -603,6 +702,22 @@ function selectArticle(article: Article) {
   selectedArticle.value = article
 }
 
+// Mobile drawer functions
+function toggleMobileDrawer() {
+  isMobileDrawerOpen.value = !isMobileDrawerOpen.value
+  // Allow scrolling even when drawer is open for better UX
+}
+
+function closeMobileDrawer() {
+  isMobileDrawerOpen.value = false
+  // No need to restore overflow since we don't prevent it anymore
+}
+
+function selectMobileArticle(article: Article) {
+  selectedArticle.value = article
+  closeMobileDrawer() // Close drawer after selection
+}
+
 function formatDate(date: Date) {
   return date.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -643,6 +758,7 @@ const discordLink = 'https://discord.gg/FkSkanuMsQ'
 
 function setActiveTab(value: string) {
   activeTab.value = value
+  // No special mobile behavior - use same layout for all devices
 }
 
 function openDiscord() {
@@ -1068,6 +1184,11 @@ onUnmounted(() => {
     document.removeEventListener('keydown', handleNotesEscapeKey)
   }
   
+  // Cleanup mobile drawer state
+  if (isMobileDrawerOpen.value) {
+    document.body.style.overflow = ''
+  }
+  
   // Stop any ongoing speech and cleanup audio
   stopSpeech()
   if (currentAudio.value) {
@@ -1108,7 +1229,7 @@ onUnmounted(() => {
   transition: all 0.3s ease;
 }
 
-/* Responsive Fullscreen Mode */
+/* Responsive Fullscreen Mode - Base styles */
 .apple-notes-container.fullscreen {
   position: fixed !important;
   top: 0 !important;
@@ -1129,6 +1250,13 @@ onUnmounted(() => {
   overflow: hidden !important; /* Prevent any content overflow */
 }
 
+/* Desktop fullscreen - side-by-side layout (only for larger screens) */
+@media (min-width: 769px) {
+  .apple-notes-container.fullscreen {
+    flex-direction: row !important; /* Side-by-side layout for desktop */
+  }
+}
+
 /* iOS Safari specific fixes */
 @supports (-webkit-touch-callout: none) {
   .apple-notes-container.fullscreen {
@@ -1136,38 +1264,307 @@ onUnmounted(() => {
   }
 }
 
-/* Mobile responsive adjustments */
-@media (max-width: 768px) {
+/* Mobile responsive adjustments for fullscreen */
+@media (max-width: 480px) {
   .apple-notes-container.fullscreen {
     /* Use smaller viewport unit on mobile to avoid browser UI issues */
     height: 100svh !important;
     min-height: -webkit-fill-available !important;
+    /* Keep the same mobile drawer layout in fullscreen */
+    flex-direction: column !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+  }
+  
+  /* Fullscreen mobile still uses drawer interface */
+  .apple-notes-container.fullscreen .mobile-notes-header {
+    display: flex !important;
+    background: #f8f9fa !important;
+    border-bottom: 1px solid #e5e5e7 !important;
+  }
+  
+  .apple-notes-container.fullscreen .mobile-drawer-overlay {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 10001 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+  
+  .apple-notes-container.fullscreen .mobile-notes-drawer {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 300px !important;
+    height: 100vh !important;
+    z-index: 10002 !important;
+    background: #ffffff !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease !important;
+  }
+  
+  .apple-notes-container.fullscreen .mobile-notes-drawer.open {
+    transform: translateX(0) !important;
+  }
+  
+  /* Ensure drawer content is visible in fullscreen */
+  .apple-notes-container.fullscreen .drawer-notes-list {
+    background: #ffffff !important;
+    color: #1d1d1f !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-note-item {
+    color: #1d1d1f !important;
+    background: transparent !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-note-title {
+    color: #1d1d1f !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-note-snippet {
+    color: #86868b !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-note-date {
+    color: #86868b !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-loading {
+    color: #86868b !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-empty-state {
+    color: #1d1d1f !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-empty-state h3 {
+    color: #1d1d1f !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-title {
+    color: #1d1d1f !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-count {
+    color: #86868b !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-search-input {
+    color: #1d1d1f !important;
+    background: #f0f0f0 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .apple-notes-container.fullscreen .drawer-search-input::placeholder {
+    color: #86868b !important;
+  }
+  
+  .apple-notes-container.fullscreen .desktop-sidebar {
+    display: none !important;
+  }
+  
+  /* Mobile fullscreen content adjustments */
+  .apple-notes-container.fullscreen .notes-content {
+    flex: 1 !important;
+    height: calc(100svh - 80px) !important;
+    max-height: calc(100svh - 80px) !important;
+    background: #1a1a1a !important;
+    color: #ffffff !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Enhanced typography for mobile fullscreen */
+  .apple-notes-container.fullscreen .article-title {
+    font-size: 1.75rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 1.25rem !important;
+    line-height: 1.2 !important;
+    color: #ffffff !important;
+  }
+  
+  .apple-notes-container.fullscreen .article-content {
+    font-size: 1.1875rem !important;
+    line-height: 1.75 !important;
+    color: #ffffff !important;
+  }
+  
+  .apple-notes-container.fullscreen .article-view {
+    padding: 2rem 1.5rem !important;
+  }
+  
+    .apple-notes-container.fullscreen .article-content h2 {
+    font-size: 1.5rem !important;
+    color: #ffffff !important;
+    margin: 2.5rem 0 1.25rem 0 !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content h3 {
+    font-size: 1.375rem !important;
+    color: #ffffff !important;
+    margin: 2rem 0 1rem 0 !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content p {
+    margin-bottom: 1.375rem !important;
+    color: #ffffff !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content em {
+    color: #cccccc !important;
+  }
+  
+  .apple-notes-container.fullscreen .article-meta {
+    color: #cccccc !important;
+  }
+  
+  .apple-notes-container.fullscreen .article-date {
+    color: #cccccc !important;
   }
 }
 
-/* Ensure content inside fullscreen container is properly constrained */
-.apple-notes-container.fullscreen .notes-content,
-.apple-notes-container.fullscreen .notes-sidebar,
-.apple-notes-container.fullscreen .article-content {
-  height: 100% !important;
-  max-height: 100% !important;
-  overflow-y: auto !important;
-  -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+/* Tablet responsive adjustments for fullscreen */
+@media (min-width: 481px) and (max-width: 768px) {
+  .apple-notes-container.fullscreen {
+    height: 100svh !important;
+    min-height: -webkit-fill-available !important;
+    /* Use stacked layout on tablets too for better usability */
+    flex-direction: column !important;
+  }
+  
+  .apple-notes-container.fullscreen .notes-sidebar {
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: 240px !important;
+    max-height: 240px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #e5e5e7 !important;
+  }
+  
+  .apple-notes-container.fullscreen .notes-content {
+    flex: 1 !important;
+    height: calc(100svh - 240px) !important;
+    max-height: calc(100svh - 240px) !important;
+    background: #ffffff !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .apple-notes-container.fullscreen .article-view {
+    padding: 2rem 1.5rem !important;
+  }
+}
+
+/* Desktop Fullscreen Layout - side-by-side layout (769px and up only) */
+@media (min-width: 769px) {
+  .apple-notes-container.fullscreen .notes-sidebar {
+    width: 350px !important; /* Fixed width for sidebar in fullscreen */
+    min-width: 350px !important;
+    max-width: 350px !important;
+    height: 100% !important;
+    border-right: 1px solid #e5e5e7 !important;
+    border-bottom: none !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex-shrink: 0 !important;
+  }
+
+  .apple-notes-container.fullscreen .notes-content {
+    flex: 1 !important;
+    height: 100% !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content {
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+/* Enhanced typography for desktop fullscreen mode (769px and up only) */
+@media (min-width: 769px) {
+  .apple-notes-container.fullscreen .notes-title {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+  }
+
+  .apple-notes-container.fullscreen .notes-count {
+    font-size: 0.875rem !important;
+  }
+
+  .apple-notes-container.fullscreen .note-title {
+    font-size: 1.0625rem !important;
+    font-weight: 600 !important;
+  }
+
+  .apple-notes-container.fullscreen .note-snippet {
+    font-size: 0.9375rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .apple-notes-container.fullscreen .article-title {
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .apple-notes-container.fullscreen .article-meta {
+    font-size: 0.9375rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content {
+    font-size: 1.125rem !important;
+    line-height: 1.7 !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content h2 {
+    font-size: 1.75rem !important;
+    margin: 3rem 0 1.5rem 0 !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content h3 {
+    font-size: 1.5rem !important;
+    margin: 2.5rem 0 1rem 0 !important;
+  }
+
+  .apple-notes-container.fullscreen .article-content p {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .apple-notes-container.fullscreen .article-view {
+    padding: 2.5rem 3rem !important;
+  }
 }
 
 .fullscreen-btn {
   background: transparent !important;
   border: 1px solid transparent !important;
   color: hsl(var(--muted-foreground)) !important;
-  border-radius: 6px !important;
-  width: 28px !important;
-  height: 28px !important;
+  border-radius: 8px !important;
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
   padding: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   transition: all 0.15s ease !important;
-  opacity: 0.7;
+  opacity: 0.8;
+  touch-action: manipulation !important;
 }
 
 .fullscreen-btn:hover {
@@ -1175,7 +1572,8 @@ onUnmounted(() => {
   color: hsl(var(--foreground)) !important;
   border-color: hsl(var(--border)) !important;
   opacity: 1;
-  transform: none;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .fullscreen-btn:active {
@@ -1496,6 +1894,20 @@ onUnmounted(() => {
   .audio-btn .h-4 {
     width: 14px !important;
     height: 14px !important;
+  }
+}
+
+/* Extra small screens - even smaller buttons */
+@media (max-width: 480px) {
+  .audio-btn {
+    height: 28px !important;
+    padding: 0 6px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .audio-btn .h-4 {
+    width: 12px !important;
+    height: 12px !important;
   }
   
   .audio-badge {
@@ -2033,98 +2445,688 @@ onUnmounted(() => {
   }
 }
 
-/* Comprehensive Responsive Design */
+/* Mobile Notes Drawer Interface */
 
-/* Extra Small Devices (phones, 480px and down) */
+/* Mobile Notes Header */
+.mobile-notes-header {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e5e5e7;
+  padding: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.mobile-menu-button {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 32px;
+  height: 32px;
+  padding: 5px;
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  touch-action: manipulation;
+}
+
+.mobile-menu-button:active {
+  background: rgba(0, 0, 0, 0.12);
+  transform: scale(0.95);
+}
+
+.hamburger-line {
+  width: 100%;
+  height: 2px;
+  background: #1d1d1f;
+  border-radius: 1px;
+  transition: all 0.3s ease;
+  transform-origin: center;
+}
+
+.mobile-menu-button.active .hamburger-line:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+
+.mobile-menu-button.active .hamburger-line:nth-child(2) {
+  opacity: 0;
+  transform: scale(0);
+}
+
+.mobile-menu-button.active .hamburger-line:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+.mobile-header-content {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.mobile-article-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0 0 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-article-info {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 0.8125rem;
+  color: #86868b;
+}
+
+.mobile-read-time {
+  font-weight: 500;
+}
+
+.mobile-category {
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.6875rem;
+  letter-spacing: 0.5px;
+}
+
+.mobile-category.Draft { background: #fef3c7; color: #92400e; }
+.mobile-category.Story { background: #dbeafe; color: #1e40af; }
+.mobile-category.Identity { background: #f3e8ff; color: #7c3aed; }
+
+.mobile-fullscreen-btn {
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+  border: none !important;
+  border-radius: 5px !important;
+  color: #1d1d1f !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  touch-action: manipulation !important;
+}
+
+.mobile-fullscreen-btn:active {
+  background: rgba(0, 0, 0, 0.12) !important;
+  transform: scale(0.95) !important;
+}
+
+/* Mobile Drawer Overlay */
+.mobile-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 200;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: none;
+}
+
+.mobile-drawer-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Mobile Notes Drawer */
+.mobile-notes-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 85vw;
+  background: #f5f5f7;
+  border-right: 1px solid #e5e5e7;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  z-index: 300;
+  transform: translateX(-100%);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mobile-notes-drawer.open {
+  transform: translateX(0);
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1rem 0.875rem;
+  border-bottom: 1px solid #e5e5e7;
+  background: #f8f9fa;
+}
+
+.drawer-header-left {
+  display: flex;
+  align-items: center;
+}
+
+.drawer-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1d1d1f;
+  margin: 0;
+}
+
+.drawer-count {
+  font-size: 0.8125rem;
+  color: #86868b;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.1875rem 0.4375rem;
+  border-radius: 10px;
+  font-weight: 600;
+  margin-left: 0.625rem;
+}
+
+.drawer-close-btn {
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 0, 0, 0.08);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.125rem;
+  color: #1d1d1f;
+  touch-action: manipulation;
+}
+
+.drawer-close-btn:active {
+  background: rgba(0, 0, 0, 0.12);
+  transform: scale(0.95);
+}
+
+.drawer-search {
+  position: relative;
+  margin: 1rem 1.25rem 0.75rem;
+}
+
+.drawer-search .search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1rem;
+  height: 1rem;
+  color: #86868b;
+  pointer-events: none;
+}
+
+.drawer-search-input {
+  width: 100%;
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  background: #ffffff;
+  border: 1px solid #e5e5e7;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  color: #1d1d1f;
+  transition: all 0.2s ease;
+}
+
+.drawer-search-input:focus {
+  outline: none;
+  border-color: #007aff;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
+}
+
+.drawer-search-input::placeholder {
+  color: #86868b;
+}
+
+.drawer-notes-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.5rem 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-note-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  margin: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  min-height: 70px;
+  touch-action: manipulation;
+}
+
+.drawer-note-item:active {
+  background: #e8e8ed;
+  transform: scale(0.98);
+}
+
+.drawer-note-item.active {
+  background: #007aff;
+  color: white;
+}
+
+.drawer-note-item.active .drawer-note-title,
+.drawer-note-item.active .drawer-note-snippet,
+.drawer-note-item.active .drawer-note-date,
+.drawer-note-item.active .drawer-note-tag {
+  color: white;
+}
+
+.drawer-note-preview {
+  flex: 1;
+  min-width: 0;
+}
+
+.drawer-note-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin: 0 0 0.25rem 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.drawer-note-snippet {
+  font-size: 0.8125rem;
+  color: #86868b;
+  margin: 0 0 0.375rem 0;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.drawer-note-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.drawer-note-date {
+  color: #86868b;
+  font-weight: 500;
+}
+
+.drawer-note-tag {
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.625rem;
+  letter-spacing: 0.5px;
+}
+
+.drawer-note-tag:nth-of-type(1) { background: #fef3c7; color: #92400e; }
+.drawer-note-tag:nth-of-type(2) { background: #dbeafe; color: #1e40af; }
+.drawer-note-tag:nth-of-type(3) { background: #f3e8ff; color: #7c3aed; }
+
+.drawer-note-arrow {
+  font-size: 1.125rem;
+  color: #86868b;
+  margin-left: 0.75rem;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.drawer-note-item:hover .drawer-note-arrow {
+  transform: translateX(4px);
+  color: #1d1d1f;
+}
+
+.drawer-note-item.active .drawer-note-arrow {
+  color: white;
+}
+
+/* Drawer Loading State */
+.drawer-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  color: #86868b;
+}
+
+.drawer-loading .loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #f0f0f0;
+  border-top: 2px solid #007aff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+.drawer-loading p {
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Drawer Empty State */
+.drawer-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.drawer-empty-state .empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.drawer-empty-state h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1d1d1f;
+  margin: 0 0 0.5rem 0;
+}
+
+.drawer-empty-state p {
+  font-size: 0.875rem;
+  color: #86868b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Mobile Reading Experience */
 @media (max-width: 480px) {
-  .skills-section {
-    padding: 1rem 0.5rem;
+  /* Show mobile elements */
+  .mobile-notes-header {
+    display: flex;
   }
   
-  .section-header {
-    padding: 0 0.5rem;
-    margin-bottom: 1.5rem;
+  .mobile-drawer-overlay {
+    display: block;
+    position: absolute !important;
+    top: 80px !important; /* Start below mobile header */
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: calc(100vh - 80px) !important; /* Match notes content height */
+    background: rgba(0, 0, 0, 0.3) !important;
+    z-index: 350 !important;
+    pointer-events: none !important; /* Allow scrolling through overlay */
   }
   
-  .section-header h2 {
-    font-size: 1.75rem;
-    text-align: center;
+  .mobile-drawer-overlay.show {
+    pointer-events: auto !important; /* Only capture clicks when shown */
   }
   
+  .mobile-notes-drawer {
+    display: flex;
+    position: absolute !important;
+    top: 80px !important; /* Start below mobile header */
+    left: 0 !important;
+    bottom: 0 !important;
+    height: calc(100vh - 80px) !important; /* Match notes content height */
+    width: 320px !important;
+    max-width: 85vw !important;
+    background: #f5f5f7 !important;
+    border-right: 1px solid #e5e5e7 !important;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15) !important;
+    z-index: 400 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease !important;
+  }
+  
+  .mobile-notes-drawer.open {
+    transform: translateX(0) !important;
+  }
+  
+  /* Ensure drawer content is visible on mobile */
+  .mobile-notes-drawer .drawer-notes-list {
+    background: #ffffff !important;
+    color: #1d1d1f !important;
+    padding: 0.5rem 0 !important;
+  }
+  
+  .mobile-notes-drawer .drawer-note-item {
+    color: #1d1d1f !important;
+    background: transparent !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+    padding: 0.875rem 1rem !important;
+    min-height: 70px !important;
+  }
+  
+  .mobile-notes-drawer .drawer-note-title {
+    color: #1d1d1f !important;
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+  }
+  
+  .mobile-notes-drawer .drawer-note-snippet {
+    color: #86868b !important;
+    font-size: 0.8125rem !important;
+  }
+  
+  .mobile-notes-drawer .drawer-note-date {
+    color: #86868b !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .mobile-notes-drawer .drawer-title {
+    color: #1d1d1f !important;
+    font-size: 1.125rem !important;
+  }
+  
+  .mobile-notes-drawer .drawer-count {
+    color: #86868b !important;
+    background: rgba(0, 0, 0, 0.05) !important;
+    font-size: 0.8125rem !important;
+  }
+  
+  .mobile-notes-drawer .drawer-search-input {
+    color: #1d1d1f !important;
+    background: #f0f0f0 !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .mobile-notes-drawer .drawer-empty-state {
+    color: #1d1d1f !important;
+  }
+  
+  .mobile-notes-drawer .drawer-empty-state h3 {
+    color: #1d1d1f !important;
+  }
+  
+  /* Hide desktop sidebar on mobile */
+  .desktop-sidebar {
+    display: none !important;
+  }
+  
+  /* Full-screen mobile reading */
   .apple-notes-container {
-    flex-direction: column;
-    height: 70vh;
-    min-height: 500px;
-    margin: 0.5rem 0;
-    border-radius: 8px;
+    flex-direction: column !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    position: relative !important; /* Contain absolutely positioned drawer */
+    overflow: hidden !important;
   }
   
-  .notes-sidebar {
-    width: 100%;
-    height: 180px;
-    max-height: 180px;
-    border-right: none;
-    border-bottom: 1px solid #d1d5db;
-    overflow-y: auto;
-  }
-  
-  .notes-header {
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-  }
-  
-  .article-panel {
-    height: calc(70vh - 180px);
-    min-height: 320px;
+  .notes-content {
+    flex: 1 !important;
+    height: calc(100vh - 80px) !important; /* Account for mobile header */
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    background: #1a1a1a !important;
+    color: #ffffff !important;
   }
   
   .article-view {
-    padding: 0.75rem;
+    padding: 1.5rem 1.25rem !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+    color: #ffffff !important;
+    background: transparent !important;
   }
   
   .article-title {
-    font-size: 1.25rem;
-    margin-bottom: 0.5rem;
+    font-size: 1.625rem !important;
+    font-weight: 800 !important;
+    line-height: 1.25 !important;
+    color: #ffffff !important;
+    margin-bottom: 1rem !important;
   }
   
   .article-meta {
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    font-size: 0.75rem;
+    gap: 0.875rem !important;
+    flex-wrap: wrap !important;
+    font-size: 0.9375rem !important;
+    margin-bottom: 1.75rem !important;
+    padding-bottom: 1.25rem !important;
+    border-bottom: 1px solid #f0f0f0 !important;
   }
   
   .article-content {
-    font-size: 0.875rem;
-    line-height: 1.6;
+    font-size: 1.125rem !important;
+    line-height: 1.7 !important;
+    color: #ffffff !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif !important;
   }
   
-  .fullscreen-btn {
-    width: 32px !important;
-    height: 32px !important;
+    .article-content h2 {
+    font-size: 1.375rem !important;
+    font-weight: 700 !important;
+    margin: 2rem 0 1rem 0 !important;
+    color: #ffffff !important;
+  }
+
+  .article-content h3 {
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    margin: 1.75rem 0 0.75rem 0 !important;
+    color: #ffffff !important;
   }
   
-  /* Article list items */
-  .article-list-item {
-    padding: 0.75rem 1rem;
-    margin-bottom: 0.25rem;
+  .article-content p {
+    margin-bottom: 1.25rem !important;
+    text-align: justify !important;
+    color: #ffffff !important;
   }
   
-  /* Experience section */
-  .experience-section {
-    padding: 1rem 0.5rem;
+  .article-content em {
+    color: #cccccc !important;
   }
   
-  .experience-item {
-    padding: 1rem;
-    margin-bottom: 1rem;
+  .article-date {
+    color: #cccccc !important;
   }
   
-  .experience-item h3 {
-    font-size: 1rem;
+  .article-meta {
+    color: #cccccc !important;
   }
   
-  .experience-item p {
-    font-size: 0.875rem;
+  /* Audio controls mobile optimization */
+  .audio-player {
+    margin-top: 2rem !important;
+    padding: 1.25rem 0 !important;
+    border-top: 1px solid #f0f0f0 !important;
+  }
+  
+  .audio-controls {
+    flex-wrap: wrap !important;
+    gap: 1rem !important;
+    justify-content: flex-start !important;
+  }
+  
+  .audio-btn {
+    height: 48px !important;
+    min-width: 48px !important;
+    padding: 0 1.25rem !important;
+    font-size: 0.9375rem !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    touch-action: manipulation !important;
+  }
+  
+  .speed-control {
+    width: 100% !important;
+    margin: 1rem 0 !important;
+    justify-content: space-between !important;
+  }
+  
+  .speed-slider {
+    flex: 1 !important;
+    margin: 0 1rem !important;
+  }
+}
+
+/* Responsive Design - Same Layout for All Devices */
+
+/* Tablet and larger devices use desktop layout */
+
+/* Tablet and larger - keep original desktop layout */
+@media (min-width: 481px) {
+  /* Hide all mobile elements */
+  .mobile-notes-header,
+  .mobile-drawer-overlay,
+  .mobile-notes-drawer {
+    display: none !important;
+  }
+  
+  /* Show desktop sidebar */
+  .desktop-sidebar {
+    display: flex !important;
+  }
+  
+  /* Ensure normal sidebar layout for larger screens */
+  .notes-sidebar {
+    width: 300px !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-right: 1px solid #d1d5db !important;
+    border-bottom: none !important;
+  }
+  
+  .apple-notes-container {
+    flex-direction: row !important;
+    height: 70vh !important;
+    min-height: 600px !important;
+  }
+  
+  .notes-content {
+    flex: 1 !important;
+    height: 100% !important;
   }
 }
 
@@ -2146,34 +3148,36 @@ onUnmounted(() => {
   }
   
   .notes-sidebar {
-    width: 100%;
-    height: 220px;
-    max-height: 220px;
-    border-right: none;
-    border-bottom: 1px solid #d1d5db;
+    width: 100% !important;
+    height: 220px !important;
+    max-height: 220px !important;
+    border-right: none !important;
+    border-bottom: 1px solid #d1d5db !important;
+    overflow-y: auto !important;
   }
   
-  .article-panel {
-    height: calc(75vh - 220px);
-    min-height: 380px;
+  .notes-content {
+    height: calc(75vh - 220px) !important;
+    min-height: 380px !important;
   }
   
   .article-view {
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.5rem !important;
   }
   
   .article-title {
-    font-size: 1.5rem;
+    font-size: 1.625rem !important;
+    font-weight: 700 !important;
   }
   
   .article-meta {
-    gap: 0.75rem;
-    font-size: 0.875rem;
+    gap: 0.875rem !important;
+    font-size: 0.9375rem !important;
   }
   
   .article-content {
-    font-size: 0.9375rem;
-    line-height: 1.65;
+    font-size: 1.0625rem !important;
+    line-height: 1.68 !important;
   }
   
   .experience-section {
@@ -2197,39 +3201,42 @@ onUnmounted(() => {
   }
   
   .apple-notes-container {
-    flex-direction: row;
-    height: 80vh;
-    min-height: 700px;
+    flex-direction: row !important;
+    height: 80vh !important;
+    min-height: 700px !important;
   }
   
   .notes-sidebar {
-    width: 280px;
-    max-height: none;
-    height: 100%;
-    border-right: 1px solid #d1d5db;
-    border-bottom: none;
+    width: 320px !important;
+    max-height: none !important;
+    height: 100% !important;
+    border-right: 1px solid #d1d5db !important;
+    border-bottom: none !important;
+    flex-shrink: 0 !important;
   }
   
-  .article-panel {
-    flex: 1;
-    height: 100%;
+  .notes-content {
+    flex: 1 !important;
+    height: 100% !important;
   }
   
   .article-view {
-    padding: 1.5rem 2rem;
+    padding: 2rem 2.5rem !important;
   }
   
   .article-title {
-    font-size: 1.75rem;
+    font-size: 1.875rem !important;
+    font-weight: 700 !important;
   }
   
   .article-meta {
-    gap: 1rem;
+    gap: 1rem !important;
+    font-size: 1rem !important;
   }
   
   .article-content {
-    font-size: 1rem;
-    line-height: 1.7;
+    font-size: 1.125rem !important;
+    line-height: 1.75 !important;
   }
   
   .experience-section {
@@ -2357,8 +3364,31 @@ onUnmounted(() => {
   }
   
   .fullscreen-btn {
-    min-height: 44px !important;
-    min-width: 44px !important;
+    min-height: 36px !important;
+    min-width: 36px !important;
+  }
+  
+  .admin-btn {
+    min-height: 36px !important;
+    min-width: 36px !important;
+  }
+  
+  /* Smaller icons for mobile buttons */
+  .fullscreen-btn .h-3\.5 {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
+  }
+  
+  .admin-btn .h-4 {
+    width: 0.875rem !important;
+    height: 0.875rem !important;
+  }
+  
+  .drawer-close-btn {
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 5px !important;
+    font-size: 1rem !important;
   }
   
   .tab-button {

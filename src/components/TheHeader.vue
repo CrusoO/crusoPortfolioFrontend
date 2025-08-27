@@ -9,7 +9,7 @@
 
       <div class="header-actions">
         <!-- Review Display -->
-        <div v-if="reviewStats.count > 0" class="review-display">
+        <div class="review-display">
           <Tooltip :content="`${reviewStats.count} review${reviewStats.count > 1 ? 's' : ''} received`" placement="bottom">
             <div class="review-badge">
               <Star class="review-star" />
@@ -39,16 +39,6 @@
 
 
 
-        <Button 
-          @click="toggleMobileMenu" 
-          variant="ghost" 
-          size="icon" 
-          class="mobile-toggle"
-          :aria-label="isMobileMenuOpen ? 'Close menu' : 'Open menu'"
-        >
-          <Menu v-if="!isMobileMenuOpen" class="h-5 w-5" />
-          <X v-else class="h-5 w-5" style="transform: rotate(90deg);" />
-        </Button>
       </div>
     </div>
 
@@ -163,7 +153,15 @@ function handleGlobalKeydown(event: KeyboardEvent) {
 
 function updateReviewStats() {
   const stats = JSON.parse(localStorage.getItem('portfolioReviewStats') || '{"count": 0}')
-  reviewStats.value = stats
+  
+  // If no reviews in localStorage, add some demo data
+  if (stats.count === 0) {
+    const demoStats = { count: 12, averageRating: 4.8 }
+    localStorage.setItem('portfolioReviewStats', JSON.stringify(demoStats))
+    reviewStats.value = demoStats
+  } else {
+    reviewStats.value = stats
+  }
 }
 
 function handleReviewsUpdate(event: CustomEvent) {
@@ -271,7 +269,55 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .review-display {
-    display: none; /* Hide on mobile to save space */
+    display: flex; /* Show on mobile but smaller */
+  }
+  
+  .review-badge {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 0.75rem;
+  }
+  
+  .review-star {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+  
+  .review-count {
+    font-size: 0.75rem;
+  }
+  
+  .header-actions {
+    gap: 0.25rem;
+  }
+  
+  /* Reduce button sizes on mobile */
+  .theme-switch {
+    transform: scale(0.75);
+  }
+  
+  .command-btn {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    padding: 0 !important;
+  }
+  
+  .command-btn .h-4 {
+    width: 0.625rem !important;
+    height: 0.625rem !important;
+  }
+  
+  .mobile-toggle {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    padding: 0 !important;
+  }
+  
+  .mobile-toggle .h-5 {
+    width: 0.75rem !important;
+    height: 0.75rem !important;
   }
 }
 

@@ -714,3 +714,170 @@ video {
     text-decoration: underline;
   }
 }
+
+/* Performance Optimizations */
+/* Enable hardware acceleration for smooth animations */
+.paint-canvas,
+.project-card,
+.nav-item,
+.hero-orb-1,
+.hero-orb-2 {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Optimize font loading */
+@font-face {
+  font-display: swap; /* Improve font loading performance */
+}
+
+/* Critical performance improvements */
+* {
+  /* Improve scrolling performance */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Optimize text rendering */
+  text-rendering: optimizeLegibility;
+  
+  /* Better box model performance */
+  box-sizing: border-box;
+}
+
+/* Optimize images for performance */
+img {
+  /* Enable browser optimizations */
+  content-visibility: auto;
+  contain-intrinsic-size: 200px; /* Reasonable default */
+  
+  /* Better image rendering */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Lazy loading optimization */
+img[loading="lazy"] {
+  content-visibility: auto;
+}
+
+/* Animation performance optimizations */
+@media (prefers-reduced-motion: no-preference) {
+  /* Only enable intensive animations if user doesn't prefer reduced motion */
+  .hero-orb-1,
+  .hero-orb-2 {
+    animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Mobile performance optimizations */
+@media (max-width: 768px) {
+  /* Reduce expensive operations on mobile */
+  .hero-orb-1,
+  .hero-orb-2 {
+    filter: blur(30px); /* Less intensive blur */
+    opacity: 0.4;
+  }
+  
+  /* Optimize scrolling on mobile */
+  body {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+  
+  /* Improve tap response */
+  button,
+  .btn,
+  a {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Optimize mobile viewport */
+  html {
+    /* Prevent iOS zoom on input focus */
+    -webkit-text-size-adjust: 100%;
+    
+    /* Better mobile scrolling */
+    scroll-behavior: smooth;
+  }
+}
+
+/* GPU acceleration for better performance */
+.animate-fade-in,
+.animate-slide-up,
+.animate-scale-in {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
+/* Intersection Observer fallback styles */
+.lazy-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 100vh;
+}
+
+/* Optimize container queries for modern browsers */
+@supports (container-type: inline-size) {
+  .responsive-container {
+    container-type: inline-size;
+  }
+}
+
+/* Modern CSS optimizations */
+@supports (backdrop-filter: blur(10px)) {
+  .modern-navbar .navbar-pill {
+    backdrop-filter: blur(24px) saturate(1.2);
+  }
+}
+
+/* Battery optimization for mobile users */
+@media (prefers-reduced-motion: reduce) {
+  /* Disable resource-intensive animations */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Disable expensive visual effects */
+  .hero-orb-1,
+  .hero-orb-2 {
+    display: none;
+  }
+  
+  /* Reduce blur effects */
+  .navbar-pill {
+    backdrop-filter: none;
+    background: rgba(0, 0, 0, 0.95);
+  }
+}
+
+/* High performance mode for low-end devices */
+@media (max-width: 480px) and (max-height: 640px) {
+  /* Further optimize for small, low-end devices */
+  .hero-orb-1,
+  .hero-orb-2 {
+    display: none; /* Remove decorative elements */
+  }
+  
+  .paint-canvas {
+    image-rendering: pixelated; /* Faster rendering */
+  }
+  
+  /* Simplify backgrounds */
+  .hero {
+    background: hsl(var(--background));
+  }
+  
+  /* Reduce shadow effects */
+  .project-card,
+  .contact-card,
+  .navbar-pill {
+    box-shadow: none;
+  }
+}

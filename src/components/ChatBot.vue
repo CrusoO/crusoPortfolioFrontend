@@ -4,10 +4,12 @@
     :class="{ 
       'expanded': isOpen, 
       'dragging': isDragging,
-      'following': isFollowingUser
+      'following': isFollowingUser,
+      'hidden-fullscreen': isNotesFullscreen
     }"
     :style="getPositionStyle()"
     @mousedown="startDragging"
+    @touchstart="startDragging"
     role="complementary"
     aria-label="AI Assistant Chat Interface"
   >
@@ -178,6 +180,7 @@ const sectionVisitCount = ref<Record<string, number>>({})
 const lastInteractionTime = ref(Date.now())
 const boredTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const scrollTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+const isNotesFullscreen = ref(false)
 
 // All section responses removed - no hardcoded responses ever
 
@@ -187,26 +190,32 @@ const scrollTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 
 let messageId = 0
 
-// Dragging functionality
-function startDragging(event: MouseEvent) {
+// Dragging functionality (supports both mouse and touch)
+function startDragging(event: MouseEvent | TouchEvent) {
   const element = event.currentTarget as HTMLElement
   const rect = element.getBoundingClientRect()
   
-  // Store initial mouse position
+  // Get coordinates from either mouse or touch event
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+  
+  // Store initial position
   mouseStartPos.value = {
-    x: event.clientX,
-    y: event.clientY
+    x: clientX,
+    y: clientY
   }
   
   hasMoved.value = false
   
   dragOffset.value = {
-    x: event.clientX - rect.left,
-    y: event.clientY - rect.top
+    x: clientX - rect.left,
+    y: clientY - rect.top
   }
   
   document.addEventListener('mousemove', handleMouseMove)
   document.addEventListener('mouseup', handleMouseUp)
+  document.addEventListener('touchmove', handleTouchMove, { passive: false })
+  document.addEventListener('touchend', handleMouseUp)
   document.body.style.userSelect = 'none'
   event.preventDefault()
 }
@@ -240,9 +249,44 @@ function handleMouseMove(event: MouseEvent) {
   }
 }
 
+function handleTouchMove(event: TouchEvent) {
+  const touch = event.touches[0]
+  const moveDistance = Math.sqrt(
+    Math.pow(touch.clientX - mouseStartPos.value.x, 2) + 
+    Math.pow(touch.clientY - mouseStartPos.value.y, 2)
+  )
+  
+  // If touch moved more than 10 pixels, start dragging
+  if (moveDistance > 10) {
+    hasMoved.value = true
+    if (!isDragging.value) {
+      isDragging.value = true
+    }
+  }
+  
+  if (isDragging.value) {
+    const newX = touch.clientX - dragOffset.value.x
+    const newY = touch.clientY - dragOffset.value.y
+    
+    // Keep within viewport bounds with mobile-friendly size
+    const botSize = window.innerWidth <= 480 ? 50 : 80
+    const maxX = window.innerWidth - botSize
+    const maxY = window.innerHeight - botSize
+    
+    position.value = {
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY))
+    }
+    
+    event.preventDefault()
+  }
+}
+
 function handleMouseUp() {
   document.removeEventListener('mousemove', handleMouseMove)
   document.removeEventListener('mouseup', handleMouseUp)
+  document.removeEventListener('touchmove', handleTouchMove)
+  document.removeEventListener('touchend', handleMouseUp)
   document.body.style.userSelect = ''
   
   // If user didn't move mouse much, treat it as a click (open chat)
@@ -628,15 +672,44 @@ onMounted(() => {
   // Initialize position
   position.value = { x: 0, y: 0 }
   
+  // Monitor notes fullscreen state
+  const checkNotesFullscreen = () => {
+    const fullscreenContainer = document.querySelector('.apple-notes-container.fullscreen')
+    isNotesFullscreen.value = fullscreenContainer !== null
+  }
+  
+  // Watch for fullscreen changes
+  const observer = new MutationObserver(checkNotesFullscreen)
+  const skillsSection = document.getElementById('skills')
+  if (skillsSection) {
+    observer.observe(skillsSection, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class']
+    })
+  }
+  
+  // Initial check
+  checkNotesFullscreen()
+  
   // Start welcome sequence with interactive features
   setTimeout(() => {
     startWelcomeSequence()
   }, 1000) // Slightly longer delay for better UX
+  
+  // Store observer for cleanup
+  ;(window as any).chatBotObserver = observer
 })
 
 // Cleanup on unmount
 onUnmounted(() => {
   cleanup()
+  // Cleanup observer
+  const observer = (window as any).chatBotObserver
+  if (observer) {
+    observer.disconnect()
+    delete (window as any).chatBotObserver
+  }
 })
 </script>
 
@@ -653,6 +726,13 @@ onUnmounted(() => {
   cursor: grabbing;
   transition: none;
   z-index: 1001;
+}
+
+/* Hide bot when notes are in fullscreen mode */
+.chatbot-container.hidden-fullscreen {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: scale(0) !important;
 }
 
 /* Enhanced transitions for smooth following */
@@ -1257,8 +1337,8 @@ onUnmounted(() => {
   }
 
   .bot-toggle {
-    width: 48px;
-    height: 48px;
+    width: 38px;
+    height: 38px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
 
@@ -1610,8 +1690,8 @@ onUnmounted(() => {
   }
 
   .bot-toggle {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
   }
 
   .speech-bubble {

@@ -311,23 +311,50 @@ let drawingData: DrawingData = {
 function initCanvas() {
   if (!canvas.value) return
   
-  // Set canvas size to match container
+  // Set canvas size to match container with device pixel ratio optimization
   const container = canvas.value.parentElement
   if (container) {
-    canvasSize.value.width = container.clientWidth
-    canvasSize.value.height = container.clientHeight
+    const rect = container.getBoundingClientRect()
+    const devicePixelRatio = window.devicePixelRatio || 1
+    
+    // Use responsive sizing based on screen size
+    const maxWidth = window.innerWidth < 480 ? window.innerWidth - 100 : Math.min(rect.width, 800)
+    const maxHeight = window.innerWidth < 480 ? window.innerHeight - 200 : Math.min(rect.height, 600)
+    
+    canvasSize.value.width = Math.floor(maxWidth)
+    canvasSize.value.height = Math.floor(maxHeight)
+    
+    // Set actual canvas dimensions
+    canvas.value.width = canvasSize.value.width * devicePixelRatio
+    canvas.value.height = canvasSize.value.height * devicePixelRatio
+    
+    // Scale CSS size back to match logical pixels
+    canvas.value.style.width = canvasSize.value.width + 'px'
+    canvas.value.style.height = canvasSize.value.height + 'px'
   }
   
-  canvas.value.width = canvasSize.value.width
-  canvas.value.height = canvasSize.value.height
+  ctx = canvas.value.getContext('2d', {
+    // Performance optimizations
+    alpha: false, // No transparency needed
+    desynchronized: true, // Better for animations
+    willReadFrequently: false // We don't read pixel data often
+  })
   
-  ctx = canvas.value.getContext('2d')
   if (!ctx) return
   
+  // Scale context to match device pixel ratio
+  const devicePixelRatio = window.devicePixelRatio || 1
+  ctx.scale(devicePixelRatio, devicePixelRatio)
+  
+  // Initialize canvas
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, canvasSize.value.width, canvasSize.value.height)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
+  
+  // Performance optimizations
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   
   loadCanvas()
 }
@@ -428,18 +455,54 @@ function stopDrawing() {
   saveCanvas()
 }
 
+// Throttle function for performance on mobile
+function throttle(func: Function, limit: number) {
+  let inThrottle: boolean
+  return function(this: any, ...args: any[]) {
+    if (!inThrottle) {
+      func.apply(this, args)
+      inThrottle = true
+      setTimeout(() => inThrottle = false, limit)
+    }
+  }
+}
+
+// Optimized touch handling for mobile performance
+const throttledDraw = throttle(draw, 16) // ~60fps
+
 function handleTouch(e: TouchEvent) {
   e.preventDefault()
-  const touch = e.touches[0]
-  const mouseEvent = new MouseEvent(e.type === 'touchstart' ? 'mousedown' : 
-    e.type === 'touchmove' ? 'mousemove' : 'mouseup', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  })
   
-  if (e.type === 'touchstart') startDrawing(mouseEvent)
-  else if (e.type === 'touchmove') draw(mouseEvent)
-  else stopDrawing()
+  // Handle multi-touch (prevent accidental gestures)
+  if (e.touches.length > 1) {
+    stopDrawing()
+    return
+  }
+  
+  const touch = e.touches[0] || e.changedTouches[0]
+  if (!touch) return
+  
+  // Create optimized mouse event
+  const mouseEvent = new MouseEvent(
+    e.type === 'touchstart' ? 'mousedown' : 
+    e.type === 'touchmove' ? 'mousemove' : 'mouseup', 
+    {
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      bubbles: false, // Performance optimization
+      cancelable: false
+    }
+  )
+  
+  // Use appropriate handlers with performance optimizations
+  if (e.type === 'touchstart') {
+    startDrawing(mouseEvent)
+  } else if (e.type === 'touchmove') {
+    // Throttle drawing on mobile for better performance
+    throttledDraw(mouseEvent)
+  } else {
+    stopDrawing()
+  }
 }
 
 function clearCanvas() {
@@ -895,37 +958,76 @@ async function loadExistingArtwork(artworkId?: string) {
   }
 }
 
-function handleResize() {
+// Debounce function for resize handling
+function debounce(func: Function, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout>
+  return function(this: any, ...args: any[]) {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => func.apply(this, args), delay)
+  }
+}
+
+// Optimized resize handling for mobile orientation changes
+const debouncedHandleResize = debounce(() => {
   if (!canvas.value) return
   
   const container = canvas.value.parentElement
   if (container) {
-    const newWidth = container.clientWidth
-    const newHeight = container.clientHeight
+    const rect = container.getBoundingClientRect()
+    const devicePixelRatio = window.devicePixelRatio || 1
+    
+    // Calculate new size based on screen dimensions
+    const maxWidth = window.innerWidth < 480 ? window.innerWidth - 100 : Math.min(rect.width, 800)
+    const maxHeight = window.innerWidth < 480 ? window.innerHeight - 200 : Math.min(rect.height, 600)
+    
+    const newWidth = Math.floor(maxWidth)
+    const newHeight = Math.floor(maxHeight)
     
     if (newWidth !== canvasSize.value.width || newHeight !== canvasSize.value.height) {
       // Save current canvas content
       const imageData = canvas.value.toDataURL()
       
-      // Resize canvas
+      // Update canvas size
       canvasSize.value.width = newWidth
       canvasSize.value.height = newHeight
-      canvas.value.width = newWidth
-      canvas.value.height = newHeight
       
-      // Restore content
+      // Set canvas dimensions with device pixel ratio
+      canvas.value.width = newWidth * devicePixelRatio
+      canvas.value.height = newHeight * devicePixelRatio
+      
+      // Set CSS dimensions
+      canvas.value.style.width = newWidth + 'px'
+      canvas.value.style.height = newHeight + 'px'
+      
+      // Restore context settings
       if (ctx) {
+        ctx.scale(devicePixelRatio, devicePixelRatio)
         ctx.fillStyle = '#ffffff'
         ctx.fillRect(0, 0, newWidth, newHeight)
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
         
+        // Restore content
         const img = new Image()
         img.onload = () => {
-          ctx!.drawImage(img, 0, 0)
+          const scale = Math.min(newWidth / img.naturalWidth, newHeight / img.naturalHeight, 1)
+          const scaledWidth = img.naturalWidth * scale
+          const scaledHeight = img.naturalHeight * scale
+          const x = (newWidth - scaledWidth) / 2
+          const y = (newHeight - scaledHeight) / 2
+          
+          ctx!.drawImage(img, x, y, scaledWidth, scaledHeight)
         }
         img.src = imageData
       }
     }
   }
+}, 300) // Debounce resize events by 300ms
+
+function handleResize() {
+  debouncedHandleResize()
 }
 
 onMounted(async () => {
@@ -1242,63 +1344,388 @@ onUnmounted(() => {
   font-size: 11px;
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Comprehensive Responsive Design */
+
+/* Extra Small Devices (phones, 480px and down) */
+@media (max-width: 480px) {
   .paint-hero {
-    padding: 10px;
-    padding-top: 100px;
+    padding: 0.5rem;
+    padding-top: 80px;
+    min-height: 100svh; /* Use svh for mobile browsers */
   }
   
   .paint-window {
-    height: 95vh;
+    height: calc(100svh - 100px);
+    min-height: 500px;
+    border-radius: 8px;
+  }
+  
+  /* Hide menu bar on very small screens to save space */
+  .paint-menu-bar {
+    display: none;
   }
   
   .tool-palette {
-    width: 48px;
+    width: 40px;
+    padding: 2px;
+  }
+  
+  .tool-grid {
+    grid-template-columns: 1fr; /* Single column on phones */
+    gap: 1px;
   }
   
   .paint-tool {
-    width: 20px;
-    height: 20px;
-    font-size: 12px;
+    width: 36px;
+    height: 28px;
+    font-size: 10px;
+    margin-bottom: 2px;
+  }
+  
+  .color-palette {
+    padding: 4px;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
   }
   
   .color-grid {
     grid-template-columns: repeat(8, 1fr);
-  }
-  
-  .color-palette {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  .paint-hero {
-    padding: 5px;
-    padding-top: 90px;
-  }
-  
-  .tool-palette {
-    width: 44px;
-  }
-  
-  .paint-tool {
-    width: 18px;
-    height: 18px;
-    font-size: 11px;
+    max-width: 300px;
   }
   
   .color-cell {
-    width: 14px;
-    height: 14px;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
   }
   
   .status-bar {
+    padding: 4px 8px;
     flex-direction: column;
-    gap: 4px;
+    gap: 2px;
     align-items: flex-start;
+    font-size: 10px;
+  }
+  
+  .paint-title-bar {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+  
+  .window-btn {
+    width: 20px;
+    height: 16px;
+    font-size: 8px;
+  }
+  
+  /* Mobile-specific canvas optimizations */
+  .canvas-container {
+    margin: 4px;
+  }
+  
+  .current-colors {
+    scale: 0.8;
+  }
+}
+
+/* Small Devices (large phones, 481px to 768px) */
+@media (min-width: 481px) and (max-width: 768px) {
+  .paint-hero {
+    padding: 0.75rem;
+    padding-top: 90px;
+    min-height: 100vh;
+  }
+  
+  .paint-window {
+    height: calc(100vh - 120px);
+    min-height: 600px;
+    border-radius: 10px;
+  }
+  
+  .tool-palette {
+    width: 50px;
+    padding: 3px;
+  }
+  
+  .tool-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+  }
+  
+  .paint-tool {
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
+  }
+  
+  .color-palette {
+    padding: 6px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+  
+  .color-grid {
+    grid-template-columns: repeat(12, 1fr);
+    max-width: 400px;
+  }
+  
+  .color-cell {
+    width: 20px;
+    height: 20px;
+  }
+  
+  .status-bar {
+    padding: 6px 12px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 11px;
+  }
+  
+  .paint-menu-bar {
+    padding: 2px;
+  }
+  
+  .menu-item {
+    padding: 3px 6px;
+    font-size: 10px;
+  }
+}
+
+/* Medium Devices (tablets, 769px to 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .paint-hero {
+    padding: 1rem;
+    padding-top: 100px;
+  }
+  
+  .paint-window {
+    height: 85vh;
+    min-height: 700px;
+  }
+  
+  .tool-palette {
+    width: 54px;
+    padding: 4px;
+  }
+  
+  .paint-tool {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+  }
+  
+  .color-palette {
+    padding: 8px;
+    gap: 8px;
+  }
+  
+  .color-grid {
+    grid-template-columns: repeat(16, 1fr);
+  }
+  
+  .color-cell {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* Large Devices (desktops, 1025px to 1440px) */
+@media (min-width: 1025px) and (max-width: 1440px) {
+  .paint-hero {
+    padding: 1.25rem;
+    padding-top: 120px;
+  }
+  
+  .paint-window {
+    height: 90vh;
+    min-height: 800px;
+    max-width: 1200px;
+  }
+  
+  .tool-palette {
+    width: 56px;
+    padding: 4px;
+  }
+  
+  .paint-tool {
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
+  }
+  
+  .color-palette {
+    padding: 10px;
+    gap: 10px;
+  }
+  
+  .color-grid {
+    grid-template-columns: repeat(16, 1fr);
+  }
+  
+  .color-cell {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Extra Large Devices (large desktops, 1441px and up) */
+@media (min-width: 1441px) {
+  .paint-hero {
+    padding: 1.5rem;
+    padding-top: 140px;
+  }
+  
+  .paint-window {
+    height: 90vh;
+    min-height: 900px;
+    max-width: 1400px;
+  }
+  
+  .tool-palette {
+    width: 60px;
+    padding: 5px;
+  }
+  
+  .paint-tool {
+    width: 26px;
+    height: 26px;
+    font-size: 15px;
+  }
+  
+  .color-palette {
+    padding: 12px;
+    gap: 12px;
+  }
+}
+
+/* Touch-friendly improvements for mobile devices */
+@media (max-width: 768px) and (pointer: coarse) {
+  .paint-tool {
+    min-height: 44px !important; /* Apple's recommended touch target */
+    min-width: 44px !important;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .color-cell {
+    min-height: 32px !important;
+    min-width: 32px !important;
+    touch-action: manipulation;
+  }
+  
+  .window-btn {
+    min-height: 32px !important;
+    min-width: 32px !important;
+    touch-action: manipulation;
+  }
+  
+  .menu-item {
+    min-height: 44px !important;
+    display: flex;
+    align-items: center;
+    touch-action: manipulation;
+  }
+  
+  /* Improve touch scrolling */
+  .paint-canvas {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x pan-y pinch-zoom;
+  }
+}
+
+/* Landscape orientation adjustments for phones */
+@media (max-width: 768px) and (orientation: landscape) {
+  .paint-hero {
+    padding: 0.25rem;
+    padding-top: 60px;
+  }
+  
+  .paint-window {
+    height: calc(100vh - 80px);
+    min-height: 400px;
+  }
+  
+  .tool-palette {
+    width: 36px;
+  }
+  
+  .paint-tool {
+    width: 32px;
+    height: 24px;
+    font-size: 9px;
+  }
+  
+  .color-palette {
+    padding: 2px 4px;
+  }
+  
+  .status-bar {
+    padding: 2px 6px;
+    font-size: 9px;
+  }
+  
+  .paint-title-bar {
+    padding: 2px 4px;
+    font-size: 9px;
+  }
+  
+  /* Hide less essential elements in landscape */
+  .paint-menu-bar {
+    display: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .paint-tool,
+  .color-cell,
+  .window-btn {
+    border-width: 2px !important;
+  }
+  
+  .paint-tool.active {
+    outline: 3px solid;
+    outline-offset: 2px;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .paint-tool,
+  .color-cell,
+  .window-btn {
+    transition: none !important;
+  }
+}
+
+/* iOS Safari specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .paint-hero {
+    min-height: -webkit-fill-available;
+  }
+  
+  .paint-window {
+    height: -webkit-fill-available;
+  }
+  
+  /* Prevent zoom on double tap */
+  .paint-tool,
+  .color-cell {
+    touch-action: manipulation;
+  }
+}
+
+/* Android Chrome specific optimizations */
+@media screen and (max-width: 768px) {
+  .paint-canvas {
+    /* Optimize for mobile Chrome */
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 }
 </style>

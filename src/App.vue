@@ -4,14 +4,17 @@
 -->
 
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import TheHeader from '@/components/TheHeader.vue'
 import ModernNavbar from '@/components/ModernNavbar.vue'
-import PaintCanvas from '@/components/PaintCanvas.vue'
 import ProjectsSection from '@/components/ProjectsSection.vue'
 import SkillsSection from '@/components/SkillsSection.vue'
 import ContactSection from '@/components/ContactSection.vue'
 import TheFooter from '@/components/TheFooter.vue'
-import ChatBot from '@/components/ChatBot.vue'
+
+// Lazy load heavy components for better performance
+const PaintCanvas = defineAsyncComponent(() => import('@/components/PaintCanvas.vue'))
+const ChatBot = defineAsyncComponent(() => import('@/components/ChatBot.vue'))
 
 </script>
 
