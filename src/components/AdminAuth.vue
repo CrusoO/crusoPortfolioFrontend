@@ -33,7 +33,7 @@
         <div class="admin-header">
           <h2 class="admin-title">👨‍💼 Admin Dashboard</h2>
           <div class="admin-actions">
-            <Button @click="showAddNoteForm = true" variant="default">
+            <Button @click="showAddNoteForm = true" variant="default" v-if="activeAdminTab === 'notes'">
               <Plus class="h-4 w-4 mr-2" />
               Add Note
             </Button>
@@ -43,12 +43,34 @@
             </Button>
           </div>
         </div>
+
+        <!-- Admin Tabs -->
+        <div class="admin-tabs">
+          <button 
+            :class="['admin-tab-btn', { active: activeAdminTab === 'notes' }]"
+            @click="activeAdminTab = 'notes'"
+          >
+            📝 Notes Management
+          </button>
+          <button 
+            :class="['admin-tab-btn', { active: activeAdminTab === 'audio' }]"
+            @click="activeAdminTab = 'audio'"
+          >
+            🎤 Audio Management
+          </button>
+        </div>
         
+        <!-- Notes Management Tab -->
         <AdminNotesManager 
-          v-if="isAuthenticated"
+          v-if="isAuthenticated && activeAdminTab === 'notes'"
           :show-add-form="showAddNoteForm"
           @close-add-form="showAddNoteForm = false"
           @notes-updated="$emit('notesUpdated')"
+        />
+
+        <!-- Audio Management Tab -->
+        <AdminAudioManager 
+          v-if="isAuthenticated && activeAdminTab === 'audio'"
         />
       </div>
     </div>
@@ -61,6 +83,7 @@ import { Plus, LogOut } from 'lucide-vue-next'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import AdminNotesManager from './AdminNotesManager.vue'
+import AdminAudioManager from './AdminAudioManager.vue'
 
 interface Props {
   showAdminPanel: boolean
@@ -77,6 +100,7 @@ const adminPassword = ref('')
 const isAuthenticated = ref(false)
 const loginError = ref('')
 const showAddNoteForm = ref(false)
+const activeAdminTab = ref<'notes' | 'audio'>('notes')
 
 // Admin authentication (simple password-based)
 const ADMIN_PASSWORD = 'admin123' // In production, this should be more secure
@@ -194,6 +218,34 @@ if (localStorage.getItem('portfolioAdminAuth') === 'true') {
 .admin-actions {
   display: flex;
   gap: 0.75rem;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.admin-tab-btn {
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.admin-tab-btn:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.5);
+}
+
+.admin-tab-btn.active {
+  color: hsl(var(--primary));
+  border-bottom-color: hsl(var(--primary));
 }
 
 @media (max-width: 768px) {

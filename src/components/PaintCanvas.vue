@@ -701,39 +701,23 @@ async function saveCanvasToBackend(imageData: string) {
     
     let response: Response
     
-    if (isNewCanvas.value || !canvasId.value) {
-      // Create new artwork
-      response = await fetch(API_ENDPOINTS.CANVAS_SAVE, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(artworkData)
-      })
+    // Always use POST for saving (let backend handle create vs update)
+    response = await fetch(API_ENDPOINTS.CANVAS_SAVE, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(artworkData)
+    })
+    
+    if (response.ok) {
+      const result = await response.json()
+      console.log('✅ Artwork saved:', result.id || 'success')
       
-      if (response.ok) {
-        const result = await response.json()
+      if (result.id && !canvasId.value) {
         canvasId.value = result.id
         isNewCanvas.value = false
-        console.log('✅ New artwork created:', result.id)
-        
-        // Store canvas ID in localStorage for persistence
         localStorage.setItem('portfolioCanvasId', result.id)
-      }
-    } else {
-      // Update existing artwork
-      const updateEndpoint = `${API_ENDPOINTS.CANVAS_SAVE}/${canvasId.value}`
-      response = await fetch(updateEndpoint, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(artworkData)
-      })
-      
-      if (response.ok) {
-        const result = await response.json()
-        console.log('✅ Artwork updated:', canvasId.value)
       }
     }
     

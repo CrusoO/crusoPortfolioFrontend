@@ -112,21 +112,7 @@
       </form>
     </div>
 
-    <!-- Speech Bubble -->
-    <div 
-      v-if="showSpeechBubble" 
-      class="speech-bubble"
-      :class="{ 
-        'speech-bubble--welcome': showingWelcome,
-        'synchronized': isSyncSpeaking 
-      }"
-    >
-      <div class="speech-content">
-        {{ speechBubble }}
-        <span v-if="isSpeechTyping" class="typing-cursor">|</span>
-      </div>
-      <div class="speech-bubble-arrow"></div>
-    </div>
+    <!-- Speech Bubble Removed - Voice Only Mode -->
 
     <!-- Bot Avatar (always visible) -->
     <div 
@@ -153,7 +139,7 @@
 
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { API_ENDPOINTS } from '@/config/api'
-import elevenLabsTTS from '@/services/elevenlabs-tts'
+// ElevenLabs import removed - using browser speech only
 
 // No props needed - bot will always greet as "visitor"
 
@@ -179,10 +165,7 @@ const mouseStartPos = ref({ x: 0, y: 0 })
 const hasMoved = ref(false)
 const showingWelcome = ref(false)
 const isInitialLoad = ref(true)
-const speechBubble = ref('')
-const showSpeechBubble = ref(false)
-const fullWelcomeMessage = ref('')
-const isSpeechTyping = ref(false)
+// Speech bubble variables removed - voice only mode
 
 // New interactive features
 const currentSection = ref('hero')
@@ -196,64 +179,11 @@ const lastInteractionTime = ref(Date.now())
 const boredTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const scrollTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 
-// Section-specific interactive responses
-const sectionResponses = {
-  hero: [
-    "Hi there! Welcome ! I'm Lisa, your friendly  guide! 🤖✨",
-    "Welcome visitor! Ready for an interactive tour? I can tell you about every pixel of this place! 😄",
-    "Hey! *waves digitally* I'm like a GPS but for portfolios - much more fun though! 🗺️",
-    "First time here? Don't worry, I'll be your digital tour guide. No boring facts, I promise! 😉"
-  ],
-  projects: [
-    "Oooh, checking out the projects? These are Robinson's babies! Want me to tell you which one can make you rich? 💰",
-    "Projects section! This is where the magic happens. CodeSensei is my personal favorite - it's almost as smart as me! 🧠",
-    "Look at these beauties! Each project has a story. Want to hear some developer drama? 🎭",
-    "These projects are like Pokemon cards but for developers - gotta code them all! ⚡"
-  ],
-  skills: [
-    "Skills and Notes! This is where Robinson shows off... I mean, shares knowledge! 📚",
-    "Reading time! Some of these articles are longer than my attention span, but they're worth it! 😅",
-    "Did you know you can listen to these articles? I have a beautiful voice - well, ElevenLabs does! 🎵",
-    "Notes section! Warning: May contain high levels of wisdom and bad programming jokes! 🤓"
-  ],
-  canvas: [
-    "Paint time! 🎨 This is my favorite playground. Wanna create some digital chaos together?",
-    "MS Paint vibes but make it 2024! I love watching people draw stick figures and call it art! 😂",
-    "Canvas section! Fun fact: I've seen some masterpieces here... and some things that can't be unseen! 👨‍🎨",
-    "Ready to unleash your inner Picasso? Or your inner 5-year-old? Both are equally valid! 🖌️"
-  ],
-  contact: [
-    "Contact section! This is where business gets real. No more fun and games... just kidding, I'm always fun! 📞",
-    "Thinking of hiring Robinson? Smart choice! I can put in a good word for you... for a small fee 😉",
-    "Contact form time! Remember, Robinson loves coffee, so mention that for bonus points! ☕",
-    "Ready to collaborate? Warning: Robinson codes faster than I can keep up with! 🏃‍♂️💨"
-  ]
-}
+// All section responses removed - no hardcoded responses ever
 
-// General chat responses
-const responses = [
-  "Hi visitor! 👋 This is Lisa! I'm excited to share portfolio with you. How can I help you today? 🤖",
-  "I'm a passionate developer specializing in AI-powered applications and cutting-edge agricultural technology! 🚀",
-  "My CodeSensei project is an AI-powered code analysis tool that transforms applications into interactive learning platforms! 💻",
-  "Check out my AGRO Frontend - it's a modern agricultural management system with advanced analytics! 🌱",
-  "I'm based in beautiful Bangalore, India, the Silicon Valley of India! Always excited about innovative tech! 📍",
-  "Want to collaborate? Scroll down to my contact form and let's build something amazing together! 💌",
-  "My tech arsenal includes JavaScript, Python, React, Vue.js, AI/ML, Docker, and many more powerful tools! ⚡",
-  "Nice to meet you, visitor! I'm Lisa, Robinson's digital assistant! Drag me anywhere and let's chat about technology! 🎮",
-  "My portfolio showcases current innovations and exciting future projects that will change the world! 🔮",
-  "Need a tour? I know every section of this portfolio like the back of my digital hand! 🧭",
-  "I love discussing AI, machine learning, and how technology can solve real-world problems! 🧠",
-  "Thanks for exploring Robinson's work, visitor! Ask me anything technical! 🚀"
-]
+// All hardcoded responses removed - ALWAYS call LLM backend
 
-// Boredom responses for idle users
-const boredResponses = [
-  "Getting bored? Wanna play some games or talk to me? I promise I'm more interesting than your social media feed! 📱",
-  "Hey! Still there? Want me to tell you a programmer joke? Warning: It might be terrible! 😂",
-  "Psst! Need entertainment? I can tell you fun facts about each project or we could just chat! 🎪",
-  "Idle for too long! How about we explore the paint canvas? I love watching people create digital art! 🎨",
-  "Boredom detected! Want me to give you a personalized tour? I know all the Easter eggs! 🥚"
-]
+// All boredom responses removed - no proactive messaging
 
 let messageId = 0
 
@@ -404,9 +334,9 @@ function toggleChat() {
   hasUnread.value = false
   
   if (isOpen.value && messages.value.length === 0) {
-    // Welcome message for visitor
+    // Simple welcome message
     setTimeout(() => {
-      addBotMessage(responses[0])
+      addBotMessage("Hi! I'm here to help you explore Robinson's portfolio. Ask me anything! 🤖")
     }, 500)
   }
 }
@@ -435,68 +365,40 @@ async function sendMessage() {
   isTyping.value = true
   
   try {
-    // Send message to backend API
+    // Send message to backend LLM (simplified format)
     const response = await fetch(API_ENDPOINTS.CHAT_MESSAGE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        username: 'visitor',
         message: userMessage,
-        username: 'visitor'
+        with_voice: false  // No voice needed
       })
     })
     
     if (response.ok) {
       const data = await response.json()
       isTyping.value = false
+      // Display LLM response from backend
       addBotMessage(data.response)
     } else {
-      throw new Error('Backend not available')
+      throw new Error(`Backend responded with status: ${response.status}`)
     }
   } catch (error) {
-    // Fallback to static responses if backend is down
+    // Show server down message if backend is not available
     isTyping.value = false
-    console.log('Backend not available, using fallback responses')
+    console.error('Backend/LLM not available:', error)
     setTimeout(() => {
-      const fallbackResponse = getSmartResponse(userMessage.toLowerCase())
-      addBotMessage(fallbackResponse)
+      addBotMessage('🚫 Server is currently down. Please try again later.')
     }, 1000)
   }
 }
 
-function getSmartResponse(userMsg: string): string {
-  // More AI-like contextual responses
-  if (userMsg.includes('project') || userMsg.includes('work') || userMsg.includes('portfolio')) {
-    return responses[Math.random() > 0.5 ? 1 : 2]
-  } else if (userMsg.includes('contact') || userMsg.includes('email') || userMsg.includes('hire')) {
-    return responses[5]
-  } else if (userMsg.includes('tech') || userMsg.includes('skill') || userMsg.includes('stack')) {
-    return responses[6]
-  } else if (userMsg.includes('ai') || userMsg.includes('machine learning') || userMsg.includes('ml')) {
-    return responses[10]
-  } else if (userMsg.includes('location') || userMsg.includes('where') || userMsg.includes('bangalore')) {
-    return responses[4]
-  } else if (userMsg.includes('drag') || userMsg.includes('move')) {
-    return responses[7]
-  } else if (userMsg.includes('hello') || userMsg.includes('hi') || userMsg.includes('hey')) {
-    return responses[0]
-  } else if (userMsg.includes('who') || userMsg.includes('about')) {
-    return responses[11]
-  } else if (userMsg.includes('codesensei')) {
-    return responses[2]
-  } else if (userMsg.includes('agro') || userMsg.includes('agriculture')) {
-    return responses[3]
-  } else if (userMsg.includes('future') || userMsg.includes('next')) {
-    return responses[8]
-  } else {
-    // More intelligent random selection based on context
-    const contextResponses = [responses[0], responses[9], responses[11]]
-    return contextResponses[Math.floor(Math.random() * contextResponses.length)]
-  }
-}
+// getSmartResponse function removed - NEVER use hardcoded responses
 
-function addBotMessage(text: string) {
+async function addBotMessage(text: string, userInput?: string) {
   messages.value.push({
     id: messageId++,
     text,
@@ -505,7 +407,12 @@ function addBotMessage(text: string) {
   })
   
   scrollToBottom()
+  
+  // Pure text mode - no audio, no voice synthesis
+  console.log('🤖 Bot response (text only):', text)
 }
+
+// Audio functions removed - pure text mode only
 
 function scrollToBottom() {
   nextTick(() => {
@@ -543,113 +450,26 @@ function getPositionStyle() {
   }
 }
 
-// Typewriter effect for welcome message
+// Typewriter effect DISABLED - no speech bubble needed
 function typeMessage(message: string, callback?: () => void) {
-  speechBubble.value = ''
-  isSpeechTyping.value = true
-  let index = 0
-  
-  const typeInterval = setInterval(() => {
-    if (index < message.length) {
-      speechBubble.value += message.charAt(index)
-      index++
-    } else {
-      isSpeechTyping.value = false
-      clearInterval(typeInterval)
-      if (callback) callback()
-    }
-  }, 50) // 50ms per character for smooth typing
+  // DISABLED - speech bubble functionality removed
+  console.log('Typewriter effect disabled:', message)
+  if (callback) callback()
 }
 
-// Initial welcome sequence with speech bubble and voice
+// Simplified welcome sequence - no movement, no voice
 async function startWelcomeSequence() {
+  // Static bot - no movement, no complex behaviors
   if (isInitialLoad.value && !hasSpokenWelcome.value) {
-    showingWelcome.value = true
     hasSpokenWelcome.value = true
-    
-    // Welcome message with ElevenLabs speech
-    setTimeout(async () => {
-      showSpeechBubble.value = true
-      const welcomeText = "Hi there! Welcome ! I'm Lisa, your friendly AI guide!"
-      fullWelcomeMessage.value = welcomeText
-      
-      // Speak the welcome message with synchronized text
-      try {
-        await speakMessageSynced(
-          welcomeText, 
-          (displayText: string, isComplete: boolean) => {
-            speechBubble.value = displayText
-            isSpeechTyping.value = !isComplete
-            
-            if (isComplete) {
-              // After message completes, tell a joke
-              setTimeout(async () => {
-                const jokeText = "Here's a joke: Why do programmers prefer dark mode? Because light attracts bugs! 😂"
-                fullWelcomeMessage.value = jokeText
-                
-                try {
-                  await speakMessageSynced(
-                    jokeText,
-                    (jokeDisplayText: string, jokeIsComplete: boolean) => {
-                      speechBubble.value = jokeDisplayText
-                      isSpeechTyping.value = !jokeIsComplete
-                      
-                      if (jokeIsComplete) {
-                        // After joke, move to corner and set up scroll detection
-                        setTimeout(() => {
-                          showSpeechBubble.value = false
-                          showingWelcome.value = false
-                          position.value = { x: 20, y: 20 } // Move to top-left corner
-                          isInitialLoad.value = false
-                          startScrollDetection()
-                          startBoredTimer()
-                        }, 3000)
-                      }
-                    }
-                  )
-                } catch (error) {
-                  console.log('TTS not available for joke')
-                  // Fallback to typing animation for joke
-                  typeMessage(jokeText, () => {
-                    setTimeout(() => {
-                      showSpeechBubble.value = false
-                      showingWelcome.value = false
-                      position.value = { x: 20, y: 20 }
-                      isInitialLoad.value = false
-                      startScrollDetection()
-                      startBoredTimer()
-                    }, 3000)
-                  })
-                }
-              }, 2000)
-            }
-          }
-        )
-      } catch (error) {
-        console.log('TTS not available, continuing with text only')
-        // Fallback to typing animation
-      typeMessage(fullWelcomeMessage.value, () => {
-          // After message completes, tell a joke
-          setTimeout(async () => {
-            const jokeText = "Here's a joke: Why do programmers prefer dark mode? Because light attracts bugs! 😂"
-            fullWelcomeMessage.value = jokeText
-            
-            typeMessage(jokeText, () => {
-              // After joke, move to corner and set up scroll detection
-        setTimeout(() => {
-          showSpeechBubble.value = false
-          showingWelcome.value = false
-                position.value = { x: 20, y: 20 } // Move to top-left corner
-          isInitialLoad.value = false
-                startScrollDetection()
-                startBoredTimer()
-              }, 3000)
-            })
-          }, 2000)
-        })
-      }
-    }, 1500)
+    setTimeout(() => {
+      // Bot stays where it is - no forced positioning
+      isInitialLoad.value = false
+      // No scroll detection or movement behaviors
+    }, 1000)
+    return
   }
+  
 }
 
 // Synchronized speak with text display
@@ -657,80 +477,23 @@ async function speakMessageSynced(
   text: string, 
   onTextUpdate: (displayText: string, isComplete: boolean) => void
 ) {
-  try {
-    isSpeaking.value = true
-    isSyncSpeaking.value = true
-    await elevenLabsTTS.speakWithSync(
-      text,
-      (displayText: string, wordIndex: number, isComplete: boolean) => {
-        onTextUpdate(displayText, isComplete)
-      },
-      undefined, // no noteId for chatbot messages
-      {
-        voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel - natural female voice
-        stability: 0.6,
-        similarityBoost: 0.8,
-        style: 0.3, // Add some personality
-        useSpeakerBoost: true
-      }
-    )
-  } catch (error) {
-    console.log('ElevenLabs synchronized TTS failed:', error)
-    // Fallback to full text display
-    onTextUpdate(text, true)
-    throw error
-  } finally {
-    isSpeaking.value = false
-    isSyncSpeaking.value = false
-  }
+  // DISABLED - no speech synthesis to prevent system lag and 401 errors
+  console.log('Speech synthesis disabled:', text)
+  onTextUpdate(text, true) // Just show full text immediately
+  return Promise.resolve()
 }
 
-// Legacy speak method for backward compatibility
+// Legacy speak method DISABLED 
 async function speakMessage(text: string) {
-  try {
-    await elevenLabsTTS.speak(text, {
-      voiceId: '21m00Tcm4TlvDq8ikWAM', // Rachel - natural female voice
-      stability: 0.6,
-      similarityBoost: 0.8,
-      style: 0.3, // Add some personality
-      useSpeakerBoost: true
-    })
-  } catch (error) {
-    console.log('ElevenLabs TTS failed:', error)
-    throw error
-  }
+  // DISABLED - no speech synthesis to prevent system lag and 401 errors
+  console.log('Speech synthesis disabled:', text)
+  return Promise.resolve()
 }
 
-// Scroll detection and section identification
+// Scroll detection DISABLED - static bot mode
 function startScrollDetection() {
-  const handleScroll = () => {
-    // Update last interaction time
-    lastInteractionTime.value = Date.now()
-    resetBoredTimer()
-    
-    // Stop any current speaking during active scrolling
-    if (isSpeaking.value) {
-      elevenLabsTTS.stop()
-      isSpeaking.value = false
-      isSyncSpeaking.value = false
-      showSpeechBubble.value = false
-    }
-    
-    // Debounce scroll events
-    if (scrollTimeout.value) {
-      clearTimeout(scrollTimeout.value)
-    }
-    
-    scrollTimeout.value = setTimeout(() => {
-      // Only trigger section detection when scrolling stops
-      detectCurrentSection()
-    }, 1000) // Wait 1 second after scroll stops before speaking
-  }
-  
-  window.addEventListener('scroll', handleScroll)
-  
-  // Initial section detection
-  detectCurrentSection()
+  // Function disabled to prevent bot movement
+  return
 }
 
 // Detect which section user is currently viewing
@@ -812,108 +575,30 @@ function animateBotToSection(section: string) {
   }, 800)
 }
 
-// Provide contextual commentary for current section
+// Contextual commentary DISABLED - no hardcoded responses
 async function provideContextualCommentary(section: string) {
-  const visitCount = sectionVisitCount.value[section] || 1
-  
-  // Don't spam the user - limit commentary frequency
-  if (visitCount > 2 && Math.random() > 0.3) {
-    return // Only 30% chance of commentary after 2+ visits
-  }
-  
-  const sectionComments = sectionResponses[section as keyof typeof sectionResponses]
-  if (!sectionComments || sectionComments.length === 0) return
-  
-  let comment = sectionComments[Math.floor(Math.random() * sectionComments.length)]
-  
-  // Add visit-specific modifiers
-  if (visitCount > 1) {
-    const revisitComments = [
-      "Back again I see! 😉 ",
-      "Oh, we're revisiting! ",
-      "Round two? ",
-      "Can't get enough of this section? "
-    ]
-    comment = revisitComments[Math.floor(Math.random() * revisitComments.length)] + comment
-  }
-  
-  // Show speech bubble and speak
-  showProactiveMessage(comment, true)
+  // DISABLED - no hardcoded proactive messages 
+  return
 }
 
-// Show proactive message with optional synchronized speech
+// Show proactive message - voice only, no speech bubble
 async function showProactiveMessage(message: string, speak: boolean = false) {
-  // Don't show if chat is open or bot is busy
-  if (isOpen.value || isSpeaking.value || isTyping.value) {
-    return
-  }
+  // Disabled - no proactive messages, chat only mode
+  return
   
-  showSpeechBubble.value = true
-  
-  try {
-    if (speak) {
-      // Use synchronized speech with real-time text display
-      await speakMessageSynced(
-        message,
-        (displayText: string, isComplete: boolean) => {
-          speechBubble.value = displayText
-          isSpeechTyping.value = !isComplete
-          
-          if (isComplete) {
-            // Hide bubble after delay
-            setTimeout(() => {
-              showSpeechBubble.value = false
-            }, 4000)
-          }
-        }
-      )
-    } else {
-      // Just type message without speech
-      typeMessage(message, () => {
-        // Hide bubble after delay
-        setTimeout(() => {
-          showSpeechBubble.value = false
-        }, 3000)
-      })
-    }
-    
-  } catch (error) {
-    // If speech fails, fallback to typing animation
-    console.log('Synchronized speech failed, using fallback typing')
-    typeMessage(message, () => {
-      setTimeout(() => {
-        showSpeechBubble.value = false
-      }, 3000)
-    })
-  }
 }
 
-// Boredom detection and engagement
+// Boredom detection DISABLED - static bot mode  
 function startBoredTimer() {
-  resetBoredTimer()
+  // Function disabled to prevent bot animations and movement
+  return
 }
 
 function resetBoredTimer() {
+  // DISABLED - no boredom detection, no hardcoded responses
   if (boredTimer.value) {
     clearTimeout(boredTimer.value)
   }
-  
-  // Set bored timer for 30 seconds of inactivity
-  boredTimer.value = setTimeout(() => {
-    if (!isOpen.value && !isSpeaking.value && !isTyping.value) {
-      const boredMessage = boredResponses[Math.floor(Math.random() * boredResponses.length)]
-      showProactiveMessage(boredMessage, true)
-      
-      // Wiggle animation to get attention
-      const botElement = document.querySelector('.bot-toggle') as HTMLElement
-      if (botElement) {
-        botElement.style.animation = 'wiggle 0.5s ease-in-out 3'
-        setTimeout(() => {
-          botElement.style.animation = 'bounce 2s ease-in-out infinite'
-        }, 1500)
-      }
-    }
-  }, 30000) // 30 seconds
 }
 
 // Cleanup function for scroll and timers
@@ -1163,7 +848,7 @@ onUnmounted(() => {
   top: 70px;
   right: 0;
   width: 320px;
-  height: 400px;
+  height: 320px;
   background: #1a1a1a;
   border: 1px solid #333333;
   border-radius: 20px;
@@ -1231,7 +916,7 @@ onUnmounted(() => {
 }
 
 .messages-container {
-  height: 260px;
+  height: 180px;
   overflow-y: auto;
   padding: 1rem;
   display: flex;
@@ -1580,8 +1265,8 @@ onUnmounted(() => {
   .chat-messages {
     width: calc(100vw - 1rem);
     max-width: 300px;
-    height: 60vh;
-    max-height: 400px;
+    height: 50vh;
+    max-height: 320px;
     bottom: 60px;
     right: 0.5rem;
     border-radius: 12px;
@@ -1589,8 +1274,8 @@ onUnmounted(() => {
   }
   
   .messages-container {
-    height: calc(60vh - 140px);
-    max-height: 260px;
+    height: calc(50vh - 140px);
+    max-height: 180px;
     padding: 0.75rem;
   }
 
@@ -1653,16 +1338,16 @@ onUnmounted(() => {
 
   .chat-messages {
     width: 320px;
-    height: 65vh;
-    max-height: 450px;
+    height: 55vh;
+    max-height: 350px;
     bottom: 65px;
     right: 1rem;
     border-radius: 16px;
   }
   
   .messages-container {
-    height: calc(65vh - 140px);
-    max-height: 310px;
+    height: calc(55vh - 140px);
+    max-height: 210px;
     padding: 1rem;
   }
 
@@ -1723,14 +1408,14 @@ onUnmounted(() => {
 
   .chat-messages {
     width: 360px;
-    height: 500px;
+    height: 400px;
     bottom: 70px;
     right: 1.25rem;
     border-radius: 18px;
   }
   
   .messages-container {
-    height: 350px;
+    height: 250px;
     padding: 1.25rem;
   }
 
@@ -1776,14 +1461,14 @@ onUnmounted(() => {
 
   .chat-messages {
     width: 380px;
-    height: 520px;
+    height: 420px;
     bottom: 75px;
     right: 1.5rem;
     border-radius: 20px;
   }
   
   .messages-container {
-    height: 370px;
+    height: 270px;
     padding: 1.5rem;
   }
 
@@ -1829,14 +1514,14 @@ onUnmounted(() => {
 
   .chat-messages {
     width: 400px;
-    height: 560px;
+    height: 450px;
     bottom: 80px;
     right: 2rem;
     border-radius: 24px;
   }
   
   .messages-container {
-    height: 400px;
+    height: 290px;
     padding: 2rem;
   }
 
@@ -1909,14 +1594,14 @@ onUnmounted(() => {
 /* Landscape orientation adjustments for phones */
 @media (max-width: 768px) and (orientation: landscape) {
   .chat-messages {
-    height: 80vh;
-    max-height: 320px;
+    height: 70vh;
+    max-height: 280px;
     width: 280px;
   }
   
   .messages-container {
-    height: calc(80vh - 120px);
-    max-height: 200px;
+    height: calc(70vh - 120px);
+    max-height: 160px;
   }
 
   .chatbot-container {

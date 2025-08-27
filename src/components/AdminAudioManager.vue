@@ -46,6 +46,12 @@
         🎵 Custom Audio
       </button>
       <button 
+        :class="['tab-btn', { active: activeTab === 'bot' }]"
+        @click="activeTab = 'bot'"
+      >
+        🤖 Bot Voices
+      </button>
+      <button 
         :class="['tab-btn', { active: activeTab === 'cache' }]"
         @click="activeTab = 'cache'"
       >
@@ -57,6 +63,144 @@
       >
         📤 Upload Audio
       </button>
+    </div>
+
+    <!-- Bot Voice Tab -->
+    <div v-if="activeTab === 'bot'" class="tab-content">
+      <div class="bot-voice-section">
+        <div class="section-header">
+          <h3>🤖 Bot Voice Responses</h3>
+          <p>Upload custom voice responses for the chatbot. Bot will use these instead of AI generation when available.</p>
+        </div>
+
+        <!-- Bot Voice Upload Form -->
+        <div class="upload-form" style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">Response Text (what bot should say)</label>
+            <textarea 
+              v-model="botVoiceForm.text" 
+              placeholder="Enter the exact text this audio should play for (e.g. 'Hello! I'm Robinson's AI assistant...')"
+              style="width: 100%; min-height: 80px; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit;"
+            ></textarea>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+            <div class="form-group">
+              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">Audio Title</label>
+              <input 
+                v-model="botVoiceForm.title" 
+                placeholder="e.g. 'Greeting Response'"
+                style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px;"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">Priority (1-10)</label>
+              <input 
+                v-model="botVoiceForm.priority" 
+                type="number" 
+                min="1" 
+                max="10" 
+                value="5"
+                style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px;"
+              />
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 20px;">
+            <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #374151;">Audio File</label>
+            <div style="border: 2px dashed #d1d5db; border-radius: 8px; padding: 32px; text-align: center; background: white;">
+              <input
+                ref="botFileInput"
+                type="file"
+                accept="audio/*"
+                @change="handleBotFileSelect"
+                style="display: none;"
+              />
+              <div style="color: #6b7280;">
+                <div style="font-size: 2rem; margin-bottom: 8px;">🎤</div>
+                <p>Drop audio file here or <button type="button" @click="$refs.botFileInput?.click()" style="color: #3b82f6; text-decoration: underline; background: none; border: none; cursor: pointer;">browse</button></p>
+                <small style="color: #9ca3af;">Supports MP3, WAV, M4A up to 10MB</small>
+                <div v-if="botVoiceForm.file" style="margin-top: 12px; padding: 8px; background: #ecfdf5; border-radius: 6px; color: #059669;">
+                  ✅ Selected: {{ botVoiceForm.file.name }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Button 
+            @click="uploadBotVoice" 
+            :disabled="!botVoiceForm.text || !botVoiceForm.file || isUploading"
+            style="width: 100%; padding: 12px;"
+          >
+            {{ isUploading ? 'Uploading...' : '🤖 Upload Bot Voice' }}
+          </Button>
+        </div>
+
+        <!-- Bot Voice List -->
+        <div v-if="botVoiceList.length === 0" class="empty-state">
+          <div class="empty-icon">🤖</div>
+          <h4>No bot voices uploaded</h4>
+          <p>Upload custom audio responses for your chatbot to make it more personal!</p>
+        </div>
+
+        <div v-else class="audio-list">
+          <div class="list-header" style="margin-bottom: 16px;">
+            <h4>Bot Voice Responses ({{ botVoiceList.length }})</h4>
+          </div>
+          
+          <div 
+            v-for="audio in botVoiceList" 
+            :key="audio.id"
+            :class="['audio-item', { active: audio.isActive }]"
+            style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; margin-bottom: 12px;"
+          >
+            <div class="audio-info" style="flex: 1;">
+              <div style="font-weight: 600; margin-bottom: 4px;">🤖 {{ audio.title }}</div>
+              <div style="color: #6b7280; font-size: 0.9rem; margin-bottom: 4px;">{{ audio.text?.slice(0, 100) || 'No text' }}...</div>
+              <div style="color: #9ca3af; font-size: 0.8rem;">
+                Priority: {{ audio.priority || 5 }} • 
+                {{ formatFileSize(audio.fileSize || 0) }} • 
+                {{ audio.uploadedAt ? new Date(audio.uploadedAt).toLocaleDateString() : 'Unknown' }}
+              </div>
+            </div>
+            
+            <div class="audio-controls" style="display: flex; gap: 8px; align-items: center;">
+              <button 
+                @click="playAudio(audio.audioUrl)"
+                style="width: 36px; height: 36px; border: none; background: #3b82f6; color: white; border-radius: 6px; cursor: pointer;"
+                title="Play"
+              >
+                ▶️
+              </button>
+              
+              <button 
+                @click="toggleBotVoiceActive(audio)"
+                :style="{
+                  width: '36px',
+                  height: '36px', 
+                  border: 'none',
+                  background: audio.isActive ? '#059669' : '#9ca3af',
+                  color: 'white',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }"
+                :title="audio.isActive ? 'Disable' : 'Enable'"
+              >
+                {{ audio.isActive ? '🔊' : '🔇' }}
+              </button>
+              
+              <button 
+                @click="deleteBotVoice(audio.id)"
+                style="width: 36px; height: 36px; border: none; background: #dc2626; color: white; border-radius: 6px; cursor: pointer;"
+                title="Delete"
+              >
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Custom Audio Tab -->
@@ -300,8 +444,9 @@ interface CustomAudio {
 }
 
 // Reactive state
-const activeTab = ref<'custom' | 'cache' | 'upload'>('custom')
+const activeTab = ref<'custom' | 'cache' | 'upload' | 'bot'>('custom')
 const customAudioList = ref<CustomAudio[]>([])
+const botVoiceList = ref<any[]>([])
 const cacheStats = ref({
   totalCached: 0,
   totalSize: 0,
@@ -322,7 +467,16 @@ const uploadForm = ref({
   file: null as File | null
 })
 
+// Bot voice upload form
+const botVoiceForm = ref({
+  text: '',
+  title: '',
+  priority: 5,
+  file: null as File | null
+})
+
 const audioFileInput = ref<HTMLInputElement>()
+const botFileInput = ref<HTMLInputElement>()
 const audioPlayer = ref<HTMLAudioElement>()
 
 // Computed values
@@ -415,6 +569,137 @@ function resetUploadForm() {
   }
 }
 
+// Bot voice functions
+function handleBotFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    const file = target.files[0]
+    
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File size must be less than 10MB')
+      return
+    }
+    
+    // Validate file type
+    if (!file.type.startsWith('audio/')) {
+      alert('Please select an audio file (MP3, WAV, M4A, etc.)')
+      return
+    }
+    
+    botVoiceForm.value.file = file
+    
+    // Auto-fill title from filename if empty
+    if (!botVoiceForm.value.title) {
+      botVoiceForm.value.title = file.name.replace(/\.[^/.]+$/, '')
+    }
+  }
+}
+
+async function uploadBotVoice() {
+  if (!botVoiceForm.value.file || !botVoiceForm.value.text) return
+  
+  isUploading.value = true
+  
+  try {
+    const formData = new FormData()
+    formData.append('audio', botVoiceForm.value.file)
+    formData.append('text', botVoiceForm.value.text)
+    formData.append('title', botVoiceForm.value.title)
+    formData.append('priority', String(botVoiceForm.value.priority))
+    formData.append('type', 'bot_response')
+    
+    // Use the same API endpoint but mark as bot voice
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/audio/bot/upload`, {
+      method: 'POST',
+      body: formData
+    })
+    
+    if (response.ok) {
+      alert('✅ Bot voice uploaded successfully!')
+      resetBotVoiceForm()
+      await loadBotVoices()
+    } else {
+      alert('❌ Failed to upload bot voice')
+    }
+  } catch (error) {
+    console.error('Bot voice upload error:', error)
+    alert('❌ Upload failed: ' + (error as Error).message)
+  } finally {
+    isUploading.value = false
+  }
+}
+
+function resetBotVoiceForm() {
+  botVoiceForm.value = {
+    text: '',
+    title: '',
+    priority: 5,
+    file: null
+  }
+  if (botFileInput.value) {
+    botFileInput.value.value = ''
+  }
+}
+
+async function loadBotVoices() {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/audio/bot/list`)
+    if (response.ok) {
+      const data = await response.json()
+      // Backend returns {results: [...]} format
+      botVoiceList.value = data.results || data
+    }
+  } catch (error) {
+    console.log('Failed to load bot voices:', error)
+    botVoiceList.value = []
+  }
+}
+
+async function toggleBotVoiceActive(audio: any) {
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/audio/bot/${audio.id}/toggle`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !audio.isActive })
+    })
+    
+    if (response.ok) {
+      audio.isActive = !audio.isActive
+    } else {
+      alert('Failed to toggle bot voice status')
+    }
+  } catch (error) {
+    console.error('Error toggling bot voice:', error)
+  }
+}
+
+async function deleteBotVoice(audioId: string) {
+  if (!confirm('Are you sure you want to delete this bot voice?')) return
+  
+  try {
+    const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/audio/bot/${audioId}`, {
+      method: 'DELETE'
+    })
+    
+    if (response.ok) {
+      botVoiceList.value = botVoiceList.value.filter(a => a.id !== audioId)
+    } else {
+      alert('Failed to delete bot voice')
+    }
+  } catch (error) {
+    console.error('Error deleting bot voice:', error)
+  }
+}
+
+function playAudio(audioUrl: string) {
+  const audio = new Audio(audioUrl)
+  audio.volume = 0.8
+  audio.play().catch(error => {
+    console.log('Audio playback failed:', error)
+  })
+}
+
 async function playCustomAudio(audio: CustomAudio) {
   if (isPlaying.value) return
   
@@ -498,7 +783,8 @@ function formatDate(date: Date | null): string {
 onMounted(async () => {
   await Promise.all([
     loadCustomAudio(),
-    loadCacheStats()
+    loadCacheStats(),
+    loadBotVoices()
   ])
 })
 </script>

@@ -1,6 +1,6 @@
 // API Configuration - Defaults to local mode (no backend required)
 // Set VITE_API_BASE_URL environment variable only if you have deployed backend
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || ''
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
 
 export const API_ENDPOINTS = {
   CHAT_MESSAGE: `${API_BASE_URL}/chat/message`,
