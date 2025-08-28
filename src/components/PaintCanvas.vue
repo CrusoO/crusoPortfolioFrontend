@@ -317,9 +317,22 @@ function initCanvas() {
     const rect = container.getBoundingClientRect()
     const devicePixelRatio = window.devicePixelRatio || 1
     
-    // Use responsive sizing based on screen size
-    const maxWidth = window.innerWidth < 480 ? window.innerWidth - 100 : Math.min(rect.width, 800)
-    const maxHeight = window.innerWidth < 480 ? window.innerHeight - 200 : Math.min(rect.height, 600)
+    // Use responsive sizing based on screen size - allow full drawable area
+    let maxWidth, maxHeight
+    
+    if (window.innerWidth < 480) {
+      // Extra small screens - make smaller
+      maxWidth = window.innerWidth - 120
+      maxHeight = window.innerHeight - 250
+    } else if (window.innerWidth < 768) {
+      // Small screens
+      maxWidth = rect.width - 20
+      maxHeight = rect.height - 20
+    } else {
+      // Medium to large screens - use full available space
+      maxWidth = rect.width - 10
+      maxHeight = rect.height - 10
+    }
     
     canvasSize.value.width = Math.floor(maxWidth)
     canvasSize.value.height = Math.floor(maxHeight)
@@ -1071,7 +1084,7 @@ onUnmounted(() => {
   border: 2px solid;
   border-color: #ffffff #808080 #808080 #ffffff;
   width: 100%;
-  max-width: 1000px;
+  max-width: 95vw; /* Use more of the viewport width */
   height: 90vh;
   display: flex;
   flex-direction: column;
@@ -1355,8 +1368,9 @@ onUnmounted(() => {
   }
   
   .paint-window {
-    height: calc(100svh - 100px);
-    min-height: 500px;
+    height: calc(100svh - 120px); /* Make smaller by reducing height */
+    min-height: 400px; /* Reduce minimum height */
+    max-width: 95vw; /* Reduce width */
     border-radius: 8px;
   }
   
@@ -1538,12 +1552,13 @@ onUnmounted(() => {
   .paint-hero {
     padding: 1.25rem;
     padding-top: 120px;
+    font-size: 12px; /* Larger UI for big screens */
   }
   
   .paint-window {
     height: 90vh;
     min-height: 800px;
-    max-width: 1200px;
+    max-width: 90vw; /* Use more of the viewport */
   }
   
   .tool-palette {
@@ -1577,12 +1592,13 @@ onUnmounted(() => {
   .paint-hero {
     padding: 1.5rem;
     padding-top: 140px;
+    font-size: 14px; /* Even larger UI for large monitors */
   }
   
   .paint-window {
     height: 90vh;
     min-height: 900px;
-    max-width: 1400px;
+    max-width: 85vw; /* Allow maximum screen usage */
   }
   
   .tool-palette {
@@ -1591,14 +1607,73 @@ onUnmounted(() => {
   }
   
   .paint-tool {
-    width: 26px;
-    height: 26px;
-    font-size: 15px;
+    width: 28px; /* Larger tools for big screens */
+    height: 28px;
+    font-size: 16px; /* Larger icons */
+  }
+  
+  /* Enhanced UI scaling for large monitors */
+  .paint-title-bar {
+    font-size: 14px;
+    padding: 8px 16px;
+  }
+  
+  .paint-menu-bar {
+    font-size: 13px;
+  }
+  
+  .menu-item {
+    padding: 8px 16px;
+  }
+  
+  .color-cell {
+    width: 20px;
+    height: 20px;
   }
   
   .color-palette {
     padding: 12px;
     gap: 12px;
+  }
+}
+
+/* Ultra-wide screens (1920px and above) - Maximum UI scaling */
+@media (min-width: 1920px) {
+  .paint-hero {
+    font-size: 16px; /* Large UI for ultra-wide monitors */
+  }
+  
+  .paint-window {
+    max-width: 80vw; /* Use even more screen space */
+  }
+  
+  .paint-tool {
+    width: 32px; /* Even larger tools */
+    height: 32px;
+    font-size: 18px;
+  }
+  
+  .tool-palette {
+    width: 70px;
+    padding: 8px;
+  }
+  
+  .paint-title-bar {
+    font-size: 16px;
+    padding: 10px 20px;
+  }
+  
+  .paint-menu-bar {
+    font-size: 15px;
+  }
+  
+  .menu-item {
+    padding: 10px 20px;
+  }
+  
+  .color-cell {
+    width: 24px;
+    height: 24px;
   }
 }
 

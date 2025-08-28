@@ -214,6 +214,21 @@
                           Loading Audio...
                         </Button>
                         
+                        <!-- Pause/Resume Button -->
+                        <Button 
+                          @click="isPaused ? resumeSpeech() : pauseSpeech()"
+                          v-if="isSpeaking"
+                          variant="ghost" 
+                          size="sm"
+                          class="audio-btn pause-btn"
+                          :title="isPaused ? 'Resume audio' : 'Pause audio'"
+                        >
+                          <Play class="h-4 w-4 mr-2" v-if="isPaused" />
+                          <Pause class="h-4 w-4 mr-2" v-else />
+                          {{ isPaused ? 'Resume' : 'Pause' }}
+                        </Button>
+                        
+                        <!-- Stop Button -->
                         <Button 
                           @click="stopSpeech"
                           v-if="isSpeaking"
@@ -438,7 +453,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { API_ENDPOINTS } from '@/config/api'
 import elevenLabsTTS from '@/services/elevenlabs-tts'
-import { FileText, BookOpen, ChevronRight, MessageCircle, Search, Settings, Maximize, Minimize, Play, Square, Volume2, VolumeX } from 'lucide-vue-next'
+import { FileText, BookOpen, ChevronRight, MessageCircle, Search, Settings, Maximize, Minimize, Play, Pause, Square, Volume2, VolumeX } from 'lucide-vue-next'
 import Progress from '@/components/ui/Progress.vue'
 import Tabs from '@/components/ui/Tabs.vue'
 import Button from '@/components/ui/Button.vue'
@@ -1240,6 +1255,7 @@ onUnmounted(() => {
   height: 100dvh !important; /* Dynamic viewport height - better for mobile */
   min-height: 100vh !important; /* Fallback for browsers without dvh support */
   max-height: 100vh !important; /* Prevent overflow above screen */
+  max-width: none !important; /* Override parent container constraints */
   z-index: 10000 !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -1248,6 +1264,29 @@ onUnmounted(() => {
   border: none !important;
   background: #ffffff !important;
   overflow: hidden !important; /* Prevent any content overflow */
+}
+
+/* Ensure fullscreen container escapes parent constraints completely */
+.portfolio-container:has(.apple-notes-container.fullscreen) {
+  max-width: none !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* Alternative fallback for browsers without :has() support */
+.portfolio-section:has(.apple-notes-container.fullscreen) {
+  max-width: none !important;
+  overflow: visible !important;
+}
+
+/* Force fullscreen on larger screens to use full viewport */
+@media (min-width: 1201px) {
+  .apple-notes-container.fullscreen {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+  }
 }
 
 /* Desktop fullscreen - side-by-side layout (only for larger screens) */
